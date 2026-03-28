@@ -198,19 +198,6 @@ More services can be added by configuring additional Auth0 social connections �
 
 ---
 
-## What Makes This Different
-
-**vs Auth0's Assistant0 sample:**
-Assistant0 is a fixed personal assistant. AgentVault is infrastructure — any agent, any MCP client, permission-controlled.
-
-**vs giving agents raw API tokens:**
-AgentVault ensures agents never hold tokens. Auth0 Token Vault is the only token store. Permissions are enforced server-side, not by trusting the agent.
-
-**vs Zapier/n8n:**
-Those are workflow builders. AgentVault is a permission layer — your agent decides what to do, AgentVault decides what it's *allowed* to do.
-
----
-
 ## Docs
 
 - [Architecture](docs/ARCHITECTURE.md)
