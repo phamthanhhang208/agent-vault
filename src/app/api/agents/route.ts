@@ -2,11 +2,16 @@ import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth0';
 import { getJson, setJson, deleteKey, getByPrefix } from '@/lib/kv';
 import { nanoid } from 'nanoid';
+import { DEMO_MODE, DEMO_AGENTS } from '@/lib/demo-data';
 import type { Agent, ApiResponse } from '@/types';
 
 // GET /api/agents — list agents for current user
 export async function GET(): Promise<NextResponse<ApiResponse<Agent[]>>> {
   try {
+    if (DEMO_MODE) {
+      return NextResponse.json({ data: DEMO_AGENTS });
+    }
+
     const userId = await getCurrentUserId();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

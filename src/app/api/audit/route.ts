@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth0';
 import { getAuditLog, getAuditStats } from '@/lib/audit';
+import { DEMO_MODE, DEMO_AUDIT } from '@/lib/demo-data';
 import type { ApiResponse, AuditEntry } from '@/types';
 
 // GET /api/audit — list audit log entries + stats
@@ -9,6 +10,17 @@ export async function GET(req: Request): Promise<NextResponse<ApiResponse<{
   stats: { actionsToday: number; totalActions: number };
 }>>> {
   try {
+    if (DEMO_MODE) {
+      const today = new Date().toISOString().split('T')[0];
+      const todayEntries = DEMO_AUDIT.filter((e) => e.timestamp.startsWith(today));
+      return NextResponse.json({
+        data: {
+          entries: DEMO_AUDIT,
+          stats: { actionsToday: todayEntries.length, totalActions: DEMO_AUDIT.length },
+        },
+      });
+    }
+
     const userId = await getCurrentUserId();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

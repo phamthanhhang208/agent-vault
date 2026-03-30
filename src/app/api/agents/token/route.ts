@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth0';
 import { getJson, scanKeys } from '@/lib/kv';
+import { DEMO_MODE, DEMO_AGENTS } from '@/lib/demo-data';
 import type { ApiResponse } from '@/types';
 
 interface TokenMapping {
@@ -21,6 +22,14 @@ export async function POST(req: Request): Promise<NextResponse<ApiResponse<{ vau
     const { agentId } = await req.json();
     if (!agentId) {
       return NextResponse.json({ error: 'agentId is required' }, { status: 400 });
+    }
+
+    if (DEMO_MODE) {
+      const demoAgent = DEMO_AGENTS.find((a) => a.id === agentId);
+      if (demoAgent) {
+        return NextResponse.json({ data: { vaultToken: demoAgent._vaultToken } });
+      }
+      return NextResponse.json({ error: 'Token not found' }, { status: 404 });
     }
 
     // Scan for matching token

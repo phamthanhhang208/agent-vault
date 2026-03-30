@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server';
-import { auth0, getCurrentUserId } from '@/lib/auth0';
+import { getCurrentUserId } from '@/lib/auth0';
 import { getJson, setJson, deleteKey, getByPrefix } from '@/lib/kv';
 import { getConnectUrl, getConnectionName, getServiceScopes } from '@/lib/token-vault';
+import { DEMO_MODE, DEMO_CONNECTIONS } from '@/lib/demo-data';
 import type { VaultConnection, ServiceName, ApiResponse } from '@/types';
 
 // GET /api/connections — list vault connections for current user
 export async function GET(): Promise<NextResponse<ApiResponse<VaultConnection[]>>> {
   try {
+    if (DEMO_MODE) {
+      return NextResponse.json({ data: DEMO_CONNECTIONS });
+    }
+
     const userId = await getCurrentUserId();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

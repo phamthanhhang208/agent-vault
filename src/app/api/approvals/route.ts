@@ -2,18 +2,28 @@ import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth0';
 import { getJson, setJson, getByPrefix } from '@/lib/kv';
 import { logAction } from '@/lib/audit';
+import { DEMO_MODE, DEMO_APPROVALS } from '@/lib/demo-data';
 import type { ApprovalRequest, ApiResponse } from '@/types';
 
 // GET /api/approvals — list approval requests for current user
 export async function GET(req: Request): Promise<NextResponse<ApiResponse<ApprovalRequest[]>>> {
   try {
+    const url = new URL(req.url);
+    const statusFilter = url.searchParams.get('status');
+
+    if (DEMO_MODE) {
+      let requests = [...DEMO_APPROVALS];
+      if (statusFilter === 'pending') {
+        requests = requests.filter((r) => r.status === 'pending');
+      }
+      requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return NextResponse.json({ data: requests });
+    }
+
     const userId = await getCurrentUserId();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    const url = new URL(req.url);
-    const statusFilter = url.searchParams.get('status'); // 'pending' | 'all'
 
     let requests = await getByPrefix<ApprovalRequest>(`approval:${userId}:`);
 
