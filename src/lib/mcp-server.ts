@@ -16,6 +16,7 @@ import type { Agent, ApprovalRequest } from '@/types';
 import { SCHEMAS as GH_SCHEMAS, executeGitHubTool } from './tools/github';
 import { SCHEMAS as SLACK_SCHEMAS, executeSlackTool } from './tools/slack';
 import { SCHEMAS as GOOGLE_SCHEMAS, executeGoogleTool } from './tools/google';
+import { SCHEMAS as JIRA_SCHEMAS, executeJiraTool } from './tools/jira';
 import { getServiceToken } from './token-vault';
 
 // Collect all schemas by service
@@ -23,6 +24,7 @@ const ALL_SCHEMAS: Record<string, Record<string, object>> = {
   GitHub: GH_SCHEMAS,
   Slack: SLACK_SCHEMAS,
   'Google Workspace': GOOGLE_SCHEMAS,
+  Jira: JIRA_SCHEMAS,
 };
 
 // Tool descriptions
@@ -42,6 +44,11 @@ const TOOL_DESCRIPTIONS: Record<string, Record<string, string>> = {
     'drive.read': 'Search and read files from Google Drive',
     'drive.write': 'Create or update files in Google Drive',
     'gmail.send': 'Send an email via Gmail',
+  },
+  Jira: {
+    'issues.read': 'Search and list Jira issues with JQL',
+    'issues.create': 'Create a new Jira issue',
+    'issues.transition': 'Transition a Jira issue status',
   },
 };
 
@@ -132,6 +139,7 @@ const TOOL_EXECUTORS: Record<string, (token: string, action: string, params: Rec
   GitHub: executeGitHubTool,
   Slack: executeSlackTool,
   'Google Workspace': executeGoogleTool,
+  Jira: executeJiraTool,
 };
 
 /**

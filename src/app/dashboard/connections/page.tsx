@@ -7,6 +7,7 @@ import {
   Github,
   Slack,
   Mail,
+  Ticket,
   Settings,
   CheckCircle,
   Loader2,
@@ -50,6 +51,14 @@ const SERVICES: ServiceConfig[] = [
     iconBg: 'bg-blue-500',
     description: 'Drive, Gmail, Calendar',
     actions: ['drive.read', 'drive.write', 'gmail.send'],
+  },
+  {
+    name: 'Jira',
+    icon: Ticket,
+    color: 'text-blue-400',
+    iconBg: 'bg-blue-600',
+    description: 'Issues, boards, sprints',
+    actions: ['issues.read', 'issues.create', 'issues.transition'],
   },
 ];
 

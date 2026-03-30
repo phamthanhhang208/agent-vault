@@ -223,6 +223,7 @@ export default function LandingPage() {
                 <div className="p-2.5 bg-slate-900 rounded-lg border border-slate-800"><Slack size={20} /></div>
                 <div className="p-2.5 bg-slate-900 rounded-lg border border-slate-800"><Mail size={20} /></div>
               </div>
+              <div className="p-2.5 bg-slate-900 rounded-lg border border-slate-800"><svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
               <span className="text-xs text-slate-700">+ 25 more via Auth0</span>
             </div>
           </section>

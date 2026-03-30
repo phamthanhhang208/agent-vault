@@ -149,4 +149,14 @@ export const SERVICE_TEMPLATES: Record<string, ServiceTemplate> = {
     icon: 'Mail',
     color: 'bg-blue-500',
   },
+  Jira: {
+    service: 'Jira',
+    defaultRules: [
+      { action: 'issues.read', state: 'allow' },
+      { action: 'issues.create', state: 'approval' },
+      { action: 'issues.transition', state: 'approval' },
+    ],
+    icon: 'Ticket',
+    color: 'bg-blue-600',
+  },
 };

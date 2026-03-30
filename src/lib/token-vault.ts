@@ -25,7 +25,7 @@ const CONNECTION_MAP: Record<string, string> = {
   GitHub: 'github',
   Slack: 'slack',
   'Google Workspace': 'google-oauth2',
-  Jira: 'jira',
+  Jira: 'atlassian',
 };
 
 // Map service names to required OAuth scopes

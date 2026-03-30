@@ -15,6 +15,11 @@ import {
   Save,
   Clock,
   Plus,
+  Ticket,
+  Pause,
+  Play,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 import type { Agent, PolicyState, ServiceName } from '@/types';
 import { SERVICE_TEMPLATES } from '@/types';
@@ -23,6 +28,7 @@ const SERVICE_ICONS: Record<string, typeof Github> = {
   GitHub: Github,
   Slack: Slack,
   'Google Workspace': Mail,
+  Jira: Ticket,
 };
 
 const POLICY_STATE_STYLES: Record<PolicyState, { bg: string; text: string; label: string }> = {
@@ -311,6 +317,71 @@ export default function AgentDetailPage() {
             </button>
           </div>
         )}
+
+        {/* Danger Zone */}
+        <div className="bg-slate-900 border border-red-500/20 rounded-2xl p-6 mt-8">
+          <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+            <AlertTriangle size={18} className="text-red-500" /> Danger Zone
+          </h3>
+          <div className="space-y-3">
+            {/* Pause/Resume */}
+            <div className="flex items-center justify-between py-3 border-b border-slate-800">
+              <div>
+                <p className="text-sm text-white font-medium">
+                  {agent.status === 'active' ? 'Pause Agent' : 'Resume Agent'}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {agent.status === 'active'
+                    ? 'Temporarily stop accepting MCP connections'
+                    : 'Resume accepting MCP connections'}
+                </p>
+              </div>
+              <button
+                onClick={async () => {
+                  const newStatus = agent.status === 'active' ? 'paused' : 'active';
+                  await fetch('/api/agents', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: agent.id, status: newStatus }),
+                  });
+                  setAgent({ ...agent, status: newStatus });
+                }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  agent.status === 'active'
+                    ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20'
+                    : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20'
+                }`}
+              >
+                {agent.status === 'active' ? <Pause size={14} /> : <Play size={14} />}
+                {agent.status === 'active' ? 'Pause' : 'Resume'}
+              </button>
+            </div>
+
+            {/* Delete */}
+            <div className="flex items-center justify-between py-3">
+              <div>
+                <p className="text-sm text-white font-medium">Delete Agent</p>
+                <p className="text-xs text-slate-500">
+                  Permanently remove this agent and revoke its MCP URL
+                </p>
+              </div>
+              <button
+                onClick={async () => {
+                  if (!confirm('Are you sure you want to delete this agent? This cannot be undone.')) return;
+                  await fetch('/api/agents', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: agent.id }),
+                  });
+                  router.push('/dashboard/agents');
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-sm font-medium transition-all border border-red-500/20"
+              >
+                <Trash2 size={14} /> Delete
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
