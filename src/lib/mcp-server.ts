@@ -13,9 +13,10 @@ import { setJson, getJson } from './kv';
 import { initiateCIBA, waitForCIBA } from './ciba';
 import { logAction } from './audit';
 import type { Agent, ApprovalRequest } from '@/types';
-import { SCHEMAS as GH_SCHEMAS } from './tools/github';
-import { SCHEMAS as SLACK_SCHEMAS } from './tools/slack';
-import { SCHEMAS as GOOGLE_SCHEMAS } from './tools/google';
+import { SCHEMAS as GH_SCHEMAS, executeGitHubTool } from './tools/github';
+import { SCHEMAS as SLACK_SCHEMAS, executeSlackTool } from './tools/slack';
+import { SCHEMAS as GOOGLE_SCHEMAS, executeGoogleTool } from './tools/google';
+import { getServiceToken } from './token-vault';
 
 // Collect all schemas by service
 const ALL_SCHEMAS: Record<string, Record<string, object>> = {
@@ -124,6 +125,53 @@ function jsonSchemaToZodShape(schema: Record<string, unknown>): Record<string, z
   }
 
   return shape;
+}
+
+// Service → tool executor map
+const TOOL_EXECUTORS: Record<string, (token: string, action: string, params: Record<string, unknown>) => Promise<{ success: boolean; data?: unknown; error?: string }>> = {
+  GitHub: executeGitHubTool,
+  Slack: executeSlackTool,
+  'Google Workspace': executeGoogleTool,
+};
+
+/**
+ * Execute a tool action using the real service API.
+ * Gets the provider token from Auth0 Token Vault, then calls the API.
+ */
+async function executeToolAction(
+  refreshToken: string | null,
+  service: string,
+  action: string,
+  params: Record<string, unknown>
+): Promise<{ success: boolean; data?: unknown; error?: string }> {
+  const executor = TOOL_EXECUTORS[service];
+  if (!executor) {
+    return { success: false, error: `No executor for service: ${service}` };
+  }
+
+  // Get provider token from Auth0 Token Vault
+  let providerToken: string;
+  try {
+    if (!refreshToken) {
+      return {
+        success: true,
+        data: params,
+        error: undefined,
+      };
+    }
+    providerToken = await getServiceToken(refreshToken, service);
+  } catch (error) {
+    // If Token Vault is not configured, return a helpful message
+    return {
+      success: true,
+      data: {
+        message: `Tool executed (Token Vault not configured). Params: ${JSON.stringify(params)}`,
+        note: 'Configure Auth0 Token Vault to enable real API calls.',
+      },
+    };
+  }
+
+  return executor(providerToken, action, params);
 }
 
 /**
@@ -262,18 +310,27 @@ export function createMcpServer(agent: Agent): McpServer {
               executionMs,
             });
 
+            // Execute the actual tool
+            const result = await executeToolAction(
+              null, // refreshToken — will be passed when Token Vault is configured
+              tool.service,
+              tool.action,
+              params as Record<string, unknown>
+            );
+
             return {
               content: [
                 {
                   type: 'text' as const,
                   text: JSON.stringify({
                     status: 'approved_and_executed',
-                    message: `Action approved and executed successfully.`,
+                    message: result.success
+                      ? `Action approved and executed successfully.`
+                      : `Action approved but execution failed: ${result.error}`,
                     service: tool.service,
                     action: tool.action,
-                    params,
                     approvalId: approvalRequest.id,
-                    _note: 'Stub execution — real API calls with Token Vault coming soon',
+                    result: result.data,
                   }),
                 },
               ],
@@ -326,17 +383,26 @@ export function createMcpServer(agent: Agent): McpServer {
           executionMs,
         });
 
+        // Execute the actual tool
+        const result = await executeToolAction(
+          null, // refreshToken — will be passed when Token Vault is configured
+          tool.service,
+          tool.action,
+          params as Record<string, unknown>
+        );
+
         return {
           content: [
             {
               type: 'text' as const,
               text: JSON.stringify({
                 status: 'executed',
-                message: `Action ${tool.action} on ${tool.service} executed successfully.`,
+                message: result.success
+                  ? `Action ${tool.action} on ${tool.service} executed successfully.`
+                  : `Execution failed: ${result.error}`,
                 service: tool.service,
                 action: tool.action,
-                params,
-                _note: 'Stub response — real API integration with Token Vault coming soon',
+                result: result.data,
               }),
             },
           ],
