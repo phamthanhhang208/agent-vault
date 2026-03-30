@@ -8,20 +8,101 @@
 }
 
 /* Custom scrollbar for dark theme */
-.custom-scrollbar::-webkit-scrollbar {
+::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
-.custom-scrollbar::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
   background: transparent;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
   @apply bg-slate-700 rounded-full;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+::-webkit-scrollbar-thumb:hover {
   @apply bg-slate-600;
 }
 
 /* Body defaults */
 body {
   @apply bg-slate-950 text-slate-300 antialiased;
+}
+
+/* Animations */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slide-in-bottom {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes zoom-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.4s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
+.animate-slide-in-bottom {
+  animation: slide-in-bottom 0.3s ease-out;
+}
+
+.animate-zoom-in {
+  animation: zoom-in 0.2s ease-out;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s infinite;
+}
+
+/* Skeleton loading */
+.skeleton {
+  background: linear-gradient(90deg, theme('colors.slate.800') 25%, theme('colors.slate.700') 50%, theme('colors.slate.800') 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: theme('borderRadius.lg');
+}
+
+/* Staggered animation delays */
+.stagger-1 { animation-delay: 0.05s; animation-fill-mode: both; }
+.stagger-2 { animation-delay: 0.1s; animation-fill-mode: both; }
+.stagger-3 { animation-delay: 0.15s; animation-fill-mode: both; }
+.stagger-4 { animation-delay: 0.2s; animation-fill-mode: both; }
+.stagger-5 { animation-delay: 0.25s; animation-fill-mode: both; }
+
+/* Focus ring consistency */
+input:focus, textarea:focus, select:focus, button:focus-visible {
+  @apply outline-none ring-2 ring-indigo-500 ring-offset-0;
 }
