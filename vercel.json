@@ -3,10 +3,32 @@
   "framework": "nextjs",
   "functions": {
     "src/app/api/mcp/[serverId]/route.ts": {
-      "maxDuration": 60
+      "maxDuration": 120
     },
     "src/app/api/webhooks/ciba/route.ts": {
       "maxDuration": 10
+    },
+    "src/app/api/approvals/route.ts": {
+      "maxDuration": 10
+    },
+    "src/app/api/agents/route.ts": {
+      "maxDuration": 10
+    },
+    "src/app/api/connections/route.ts": {
+      "maxDuration": 10
+    },
+    "src/app/api/audit/route.ts": {
+      "maxDuration": 10
     }
-  }
+  },
+  "headers": [
+    {
+      "source": "/api/mcp/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, DELETE, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization, Accept" }
+      ]
+    }
+  ]
 }

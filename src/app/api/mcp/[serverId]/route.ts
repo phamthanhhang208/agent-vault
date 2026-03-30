@@ -154,3 +154,16 @@ export async function DELETE() {
   // Stateless mode — no sessions to clean up
   return new Response(null, { status: 200 });
 }
+
+// OPTIONS /api/mcp/[serverId] — CORS preflight
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept',
+      'Access-Control-Max-Age': '86400',
+    },
+  });
+}
