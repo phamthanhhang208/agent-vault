@@ -3,28 +3,28 @@
  *
  * Immutable record of all agent activity.
  * Stored in Vercel KV with timestamp-based keys for chronological ordering.
- *
- * TODO: Phase 6 — implement storage and retrieval
  */
 
-import type { AuditEntry, RiskLevel, AuditStatus } from '@/types';
-// import { kv, setJson, getByPrefix } from './kv';
+import { setJson, scanKeys, getJson } from './kv';
+import type { AuditEntry, AuditStatus, RiskLevel } from '@/types';
+import { nanoid } from 'nanoid';
 
 /**
  * Log an action to the audit trail.
  */
-export async function logAction(entry: Omit<AuditEntry, 'id' | 'timestamp'>): Promise<AuditEntry> {
+export async function logAction(
+  userId: string,
+  entry: Omit<AuditEntry, 'id' | 'timestamp'>
+): Promise<AuditEntry> {
   const auditEntry: AuditEntry = {
     ...entry,
-    id: `audit_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+    id: `aud_${nanoid(12)}`,
     timestamp: new Date().toISOString(),
   };
 
-  // TODO: Phase 6
-  // const key = `audit:${userId}:${auditEntry.timestamp}:${auditEntry.id}`;
-  // await setJson(key, auditEntry);
+  const key = `audit:${userId}:${auditEntry.timestamp}:${auditEntry.id}`;
+  await setJson(key, auditEntry);
 
-  console.log('[Audit]', auditEntry);
   return auditEntry;
 }
 
@@ -41,14 +41,35 @@ export async function getAuditLog(
     status?: AuditStatus;
   }
 ): Promise<AuditEntry[]> {
-  // TODO: Phase 6
-  // 1. Scan keys with prefix audit:{userId}:
-  // 2. Fetch all entries
-  // 3. Apply filters (agentId, service, status)
-  // 4. Sort by timestamp descending
-  // 5. Apply limit
+  const keys = await scanKeys(`audit:${userId}:*`);
+  if (keys.length === 0) return [];
 
-  return [];
+  const entries = await Promise.all(
+    keys.map((key) => getJson<AuditEntry>(key))
+  );
+
+  let results = entries.filter((e): e is AuditEntry => e !== null);
+
+  // Apply filters
+  if (options?.agentId) {
+    results = results.filter((e) => e.agentId === options.agentId);
+  }
+  if (options?.service) {
+    results = results.filter((e) => e.service === options.service);
+  }
+  if (options?.status) {
+    results = results.filter((e) => e.status === options.status);
+  }
+
+  // Sort newest first
+  results.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  // Apply limit
+  if (options?.limit) {
+    results = results.slice(0, options.limit);
+  }
+
+  return results;
 }
 
 /**
@@ -58,11 +79,15 @@ export async function getAuditStats(userId: string): Promise<{
   actionsToday: number;
   totalActions: number;
 }> {
-  // TODO: Phase 6
-  // Count entries from today vs all time
+  const keys = await scanKeys(`audit:${userId}:*`);
+  const totalActions = keys.length;
+
+  // Count today's actions
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  const todayKeys = keys.filter((k) => k.includes(today));
 
   return {
-    actionsToday: 0,
-    totalActions: 0,
+    actionsToday: todayKeys.length,
+    totalActions,
   };
 }

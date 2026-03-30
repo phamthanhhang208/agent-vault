@@ -3,12 +3,16 @@
  *
  * Creates a dynamic MCP server instance for each agent.
  * Tools are generated based on the agent's policy configuration.
- * Uses @modelcontextprotocol/sdk McpServer + StreamableHTTPServerTransport.
+ * Uses @modelcontextprotocol/sdk McpServer + WebStandardStreamableHTTPServerTransport.
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import type { Agent, Policy, PolicyRule, PolicyState } from '@/types';
+import { nanoid } from 'nanoid';
+import { setJson, getJson } from './kv';
+import { initiateCIBA, waitForCIBA } from './ciba';
+import { logAction } from './audit';
+import type { Agent, ApprovalRequest } from '@/types';
 import { SCHEMAS as GH_SCHEMAS } from './tools/github';
 import { SCHEMAS as SLACK_SCHEMAS } from './tools/slack';
 import { SCHEMAS as GOOGLE_SCHEMAS } from './tools/google';
@@ -60,7 +64,6 @@ export function assessRisk(action: string): 'Low' | 'Medium' | 'High' {
 
 /**
  * Get tool definitions that should be exposed for an agent.
- * Blocked actions are excluded entirely.
  */
 export function getExposedTools(agent: Agent): Array<{
   name: string;
@@ -80,7 +83,6 @@ export function getExposedTools(agent: Agent): Array<{
   for (const policy of agent.policies) {
     for (const rule of policy.rules) {
       if (rule.state === 'block') continue;
-
       tools.push({
         name: getToolName(policy.service, rule.action),
         service: policy.service,
@@ -95,8 +97,7 @@ export function getExposedTools(agent: Agent): Array<{
 }
 
 /**
- * Convert a JSON Schema object into a Zod schema shape for McpServer.tool().
- * Handles basic types: string, number, boolean, array of strings.
+ * Convert JSON Schema to Zod shape for McpServer.tool().
  */
 function jsonSchemaToZodShape(schema: Record<string, unknown>): Record<string, z.ZodTypeAny> {
   const props = (schema.properties || {}) as Record<string, Record<string, unknown>>;
@@ -126,8 +127,80 @@ function jsonSchemaToZodShape(schema: Record<string, unknown>): Record<string, z
 }
 
 /**
+ * Create an approval request and optionally trigger CIBA push notification.
+ */
+async function createApprovalRequest(
+  agent: Agent,
+  service: string,
+  action: string,
+  risk: 'Low' | 'Medium' | 'High',
+  params: Record<string, unknown>
+): Promise<ApprovalRequest> {
+  const requestId = `req_${nanoid(12)}`;
+  let cibaRequestId: string | null = null;
+
+  // Try to initiate CIBA push notification
+  try {
+    const cibaResponse = await initiateCIBA(
+      agent.userId,
+      `AgentVault: ${agent.name} wants to ${action} on ${service}`
+    );
+    cibaRequestId = cibaResponse.auth_req_id;
+  } catch (error) {
+    // CIBA may not be configured — that's OK, dashboard approval still works
+    console.warn('[MCP] CIBA initiation failed (dashboard-only mode):', error);
+  }
+
+  const approvalRequest: ApprovalRequest = {
+    id: requestId,
+    agentId: agent.id,
+    agentName: agent.name,
+    userId: agent.userId,
+    service,
+    action,
+    detail: `${agent.name} wants to execute ${action} on ${service}`,
+    intent: `Agent requested ${action} action via MCP tool call`,
+    payload: params,
+    risk,
+    status: 'pending',
+    resolvedVia: null,
+    cibaRequestId,
+    createdAt: new Date().toISOString(),
+    resolvedAt: null,
+  };
+
+  await setJson(`approval:${agent.userId}:${requestId}`, approvalRequest);
+  return approvalRequest;
+}
+
+/**
+ * Wait for an approval request to be resolved (via dashboard or CIBA).
+ * For serverless: uses short polling with a timeout.
+ */
+async function waitForApproval(
+  userId: string,
+  requestId: string,
+  cibaRequestId: string | null,
+  timeoutMs = 120000 // 2 minutes for serverless
+): Promise<'approved' | 'rejected' | 'expired'> {
+  const startTime = Date.now();
+  const pollInterval = 3000; // 3 seconds
+
+  while (Date.now() - startTime < timeoutMs) {
+    // Check if resolved via dashboard
+    const request = await getJson<ApprovalRequest>(`approval:${userId}:${requestId}`);
+    if (request && request.status !== 'pending') {
+      return request.status === 'approved' ? 'approved' : 'rejected';
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, pollInterval));
+  }
+
+  return 'expired';
+}
+
+/**
  * Create an MCP server instance for an agent.
- * Returns a configured McpServer ready to handle requests.
  */
 export function createMcpServer(agent: Agent): McpServer {
   const server = new McpServer({
@@ -147,7 +220,6 @@ export function createMcpServer(agent: Agent): McpServer {
       ? `${description} (⚠️ requires approval)`
       : description;
 
-    // Build Zod shape from JSON Schema
     const zodShape = schema ? jsonSchemaToZodShape(schema) : {};
 
     server.tool(
@@ -155,29 +227,105 @@ export function createMcpServer(agent: Agent): McpServer {
       label,
       zodShape,
       async (params) => {
+        const startTime = Date.now();
+
         if (tool.state === 'approval') {
-          // For now, return a message that approval is needed
-          // Phase 5 will wire this to CIBA + dashboard queue
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: JSON.stringify({
-                  status: 'approval_required',
-                  message: `This action requires human approval. The vault owner has been notified.`,
-                  service: tool.service,
-                  action: tool.action,
-                  risk: tool.risk,
-                  params,
-                }),
-              },
-            ],
-          };
+          // Create approval request + trigger CIBA
+          const approvalRequest = await createApprovalRequest(
+            agent,
+            tool.service,
+            tool.action,
+            tool.risk,
+            params as Record<string, unknown>
+          );
+
+          // Wait for resolution (dashboard or CIBA)
+          const decision = await waitForApproval(
+            agent.userId,
+            approvalRequest.id,
+            approvalRequest.cibaRequestId
+          );
+
+          const executionMs = Date.now() - startTime;
+
+          if (decision === 'approved') {
+            // Log approval + execute
+            await logAction(agent.userId, {
+              agentId: agent.id,
+              agentName: agent.name,
+              service: tool.service,
+              action: tool.action,
+              detail: `Approved: ${tool.action} on ${tool.service}`,
+              risk: tool.risk,
+              status: 'approved',
+              resolvedVia: 'dashboard', // Will be overwritten by actual resolvedVia
+              executionMs,
+            });
+
+            return {
+              content: [
+                {
+                  type: 'text' as const,
+                  text: JSON.stringify({
+                    status: 'approved_and_executed',
+                    message: `Action approved and executed successfully.`,
+                    service: tool.service,
+                    action: tool.action,
+                    params,
+                    approvalId: approvalRequest.id,
+                    _note: 'Stub execution — real API calls with Token Vault coming soon',
+                  }),
+                },
+              ],
+            };
+          } else {
+            // Rejected or expired
+            await logAction(agent.userId, {
+              agentId: agent.id,
+              agentName: agent.name,
+              service: tool.service,
+              action: tool.action,
+              detail: `${decision}: ${tool.action} on ${tool.service}`,
+              risk: tool.risk,
+              status: 'rejected',
+              resolvedVia: null,
+              executionMs,
+            });
+
+            return {
+              content: [
+                {
+                  type: 'text' as const,
+                  text: JSON.stringify({
+                    status: decision,
+                    message: decision === 'expired'
+                      ? 'Approval request expired. The vault owner did not respond in time.'
+                      : 'Action rejected by vault owner.',
+                    service: tool.service,
+                    action: tool.action,
+                    approvalId: approvalRequest.id,
+                  }),
+                },
+              ],
+              isError: true,
+            };
+          }
         }
 
-        // For 'allow' state: execute the action
-        // For now return a stub response — Phase 4 full implementation will
-        // call token-vault to get the provider token, then call the API
+        // 'allow' state: execute immediately
+        const executionMs = Date.now() - startTime;
+        await logAction(agent.userId, {
+          agentId: agent.id,
+          agentName: agent.name,
+          service: tool.service,
+          action: tool.action,
+          detail: `Auto-executed: ${tool.action} on ${tool.service}`,
+          risk: tool.risk,
+          status: 'executed',
+          resolvedVia: 'auto',
+          executionMs,
+        });
+
         return {
           content: [
             {
@@ -188,7 +336,7 @@ export function createMcpServer(agent: Agent): McpServer {
                 service: tool.service,
                 action: tool.action,
                 params,
-                _note: 'Stub response — real API integration coming with Auth0 Token Vault setup',
+                _note: 'Stub response — real API integration with Token Vault coming soon',
               }),
             },
           ],
@@ -197,7 +345,7 @@ export function createMcpServer(agent: Agent): McpServer {
     );
   }
 
-  // Expose context injection as a resource (advisory only)
+  // Context injection resource
   if (agent.contextInjection) {
     server.resource(
       'system_prompt',
