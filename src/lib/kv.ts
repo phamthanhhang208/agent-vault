@@ -25,11 +25,11 @@ export async function deleteKey(key: string): Promise<void> {
 // Scan keys by prefix pattern
 export async function scanKeys(pattern: string): Promise<string[]> {
   const keys: string[] = [];
-  let cursor = 0;
+  let cursor: number = 0;
   do {
-    const [nextCursor, batch] = await kv.scan(cursor, { match: pattern, count: 100 });
-    cursor = nextCursor;
-    keys.push(...batch);
+    const result = await kv.scan(cursor, { match: pattern, count: 100 });
+    cursor = Number(result[0]);
+    keys.push(...(result[1] as string[]));
   } while (cursor !== 0);
   return keys;
 }
@@ -39,5 +39,5 @@ export async function getByPrefix<T>(prefix: string): Promise<T[]> {
   const keys = await scanKeys(`${prefix}*`);
   if (keys.length === 0) return [];
   const values = await Promise.all(keys.map((key) => kv.get<T>(key)));
-  return values.filter((v): v is T => v !== null);
+  return values.filter((v): v is NonNullable<typeof v> => v != null) as T[];
 }

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { UserProvider } from '@auth0/nextjs-auth0/client';
+import { Auth0Provider } from '@auth0/nextjs-auth0';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -15,9 +15,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="bg-slate-950 text-slate-300 antialiased">
-        <UserProvider>
+        <Auth0Provider>
           {children}
-        </UserProvider>
+        </Auth0Provider>
       </body>
     </html>
   );

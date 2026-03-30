@@ -1,103 +1,139 @@
 /**
  * Auth0 Token Vault Wrapper
  *
- * Manages OAuth token retrieval for connected services.
- * Tokens are stored in Auth0's encrypted vault — we never persist them ourselves.
+ * Manages OAuth token retrieval for connected services via Auth0 Token Vault.
+ * Uses the refresh token exchange flow to get external provider access tokens.
  *
- * TODO: Phase 2 — implement with @auth0/ai SDK
+ * Token Vault stores & refreshes OAuth tokens — we never persist them ourselves.
+ * The flow:
+ *   1. User connects a service (GitHub, Slack, etc.) via Auth0 Connected Accounts
+ *   2. Auth0 stores the provider's access + refresh tokens in the vault
+ *   3. Our app exchanges an Auth0 refresh token for the provider's access token
+ *   4. We use the provider token to call their API, then discard it
  */
-
-export interface TokenVaultConfig {
-  domain: string;
-  clientId: string;
-  clientSecret: string;
-}
 
 export interface VaultToken {
   access_token: string;
   token_type: string;
   expires_in: number;
   scope: string;
+  issued_token_type: string;
 }
 
 // Map service display names to Auth0 connection identifiers
 const CONNECTION_MAP: Record<string, string> = {
   GitHub: 'github',
   Slack: 'slack',
-  'Google Workspace': 'google-workspace',
+  'Google Workspace': 'google-oauth2',
   Jira: 'jira',
+};
+
+// Map service names to required OAuth scopes
+const SERVICE_SCOPES: Record<string, string[]> = {
+  GitHub: ['repo', 'read:org', 'user:email', 'read:discussion'],
+  Slack: ['chat:write', 'channels:read', 'users:read', 'reactions:write'],
+  'Google Workspace': [
+    'https://www.googleapis.com/auth/drive.readonly',
+    'https://www.googleapis.com/auth/gmail.send',
+    'https://www.googleapis.com/auth/calendar',
+  ],
+  Jira: ['read:jira-work', 'write:jira-work'],
 };
 
 export function getConnectionName(serviceName: string): string {
   return CONNECTION_MAP[serviceName] ?? serviceName.toLowerCase();
 }
 
-export class TokenVault {
-  private config: TokenVaultConfig;
-
-  constructor(config: TokenVaultConfig) {
-    this.config = config;
-  }
-
-  /**
-   * Get an OAuth access token for a user's connected service.
-   * Auth0 handles refresh automatically if the token is expired.
-   */
-  async getToken(userId: string, service: string): Promise<VaultToken> {
-    const connection = getConnectionName(service);
-
-    // TODO: Implement with @auth0/ai TokenVault SDK
-    // const vault = new TokenVault({ ...this.config });
-    // return vault.getToken({ userId, connection });
-
-    throw new Error(
-      `TokenVault.getToken not yet implemented for ${connection} (userId: ${userId})`
-    );
-  }
-
-  /**
-   * Initiate an OAuth connection flow for a service.
-   * Returns a URL the user should be redirected to.
-   */
-  async getAuthorizationUrl(
-    service: string,
-    scopes: string[],
-    redirectUri: string,
-    state: string
-  ): Promise<string> {
-    const connection = getConnectionName(service);
-
-    // TODO: Implement with @auth0/ai TokenVault SDK
-    // return vault.getAuthorizationUrl({ connection, scopes, redirectUri, state });
-
-    throw new Error(
-      `TokenVault.getAuthorizationUrl not yet implemented for ${connection}`
-    );
-  }
-
-  /**
-   * Revoke a user's connection to a service.
-   */
-  async revokeConnection(userId: string, service: string): Promise<void> {
-    const connection = getConnectionName(service);
-
-    // TODO: Implement with @auth0/ai SDK
-    throw new Error(
-      `TokenVault.revokeConnection not yet implemented for ${connection}`
-    );
-  }
+export function getServiceScopes(serviceName: string): string[] {
+  return SERVICE_SCOPES[serviceName] ?? [];
 }
 
-// Singleton instance
-let tokenVaultInstance: TokenVault | null = null;
+/**
+ * Exchange an Auth0 refresh token for an external provider's access token
+ * via the Token Vault refresh token exchange grant.
+ *
+ * @see https://auth0.com/docs/secure/tokens/token-vault/refresh-token-exchange-with-token-vault
+ */
+export async function exchangeTokenVault(
+  refreshToken: string,
+  connection: string,
+  loginHint?: string
+): Promise<VaultToken> {
+  const domain = process.env.AUTH0_ISSUER_BASE_URL || `https://${process.env.AUTH0_DOMAIN}`;
+  const clientId = process.env.AUTH0_CLIENT_ID!;
+  const clientSecret = process.env.AUTH0_CLIENT_SECRET!;
 
-export function getTokenVault(): TokenVault {
-  if (!tokenVaultInstance) {
-    tokenVaultInstance = new TokenVault({
-      domain: process.env.AUTH0_DOMAIN!,
-      clientId: process.env.AUTH0_TV_CLIENT_ID!,
-      clientSecret: process.env.AUTH0_TV_CLIENT_SECRET!,
-    });
+  const body: Record<string, string> = {
+    client_id: clientId,
+    client_secret: clientSecret,
+    subject_token: refreshToken,
+    grant_type:
+      'urn:auth0:params:oauth:grant-type:token-exchange:federated-connection-access-token',
+    subject_token_type: 'urn:ietf:params:oauth:token-type:refresh_token',
+    requested_token_type:
+      'http://auth0.com/oauth/token-type/federated-connection-access-token',
+    connection,
+  };
+
+  if (loginHint) {
+    body.login_hint = loginHint;
   }
-  return tokenVaultInstance;
+
+  const response = await fetch(`${domain}/oauth/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'unknown' }));
+    throw new Error(
+      `Token Vault exchange failed for ${connection}: ${error.error_description || error.error || response.statusText}`
+    );
+  }
+
+  return response.json();
+}
+
+/**
+ * Get the Connected Accounts authorization URL.
+ * Redirects the user to Auth0's Connected Accounts flow to link an external service.
+ *
+ * Uses the My Account API endpoint which handles the OAuth consent flow
+ * with the external provider and stores the resulting tokens in the vault.
+ */
+export function getConnectUrl(
+  service: string,
+  redirectUri: string,
+  state: string
+): string {
+  const domain = process.env.AUTH0_ISSUER_BASE_URL || `https://${process.env.AUTH0_DOMAIN}`;
+  const connection = getConnectionName(service);
+  const scopes = getServiceScopes(service);
+
+  const params = new URLSearchParams({
+    connection,
+    connection_scope: scopes.join(' '),
+    redirect_uri: redirectUri,
+    state,
+  });
+
+  // Connected Accounts flow via Auth0
+  return `${domain}/authorize-connected-account?${params.toString()}`;
+}
+
+/**
+ * Get a provider access token for a specific user and service.
+ * This is the main function called by MCP tool handlers.
+ *
+ * @param refreshToken - The user's Auth0 refresh token (from session)
+ * @param service - Service display name (e.g. 'GitHub', 'Slack')
+ */
+export async function getServiceToken(
+  refreshToken: string,
+  service: string
+): Promise<string> {
+  const connection = getConnectionName(service);
+  const result = await exchangeTokenVault(refreshToken, connection);
+  return result.access_token;
 }
