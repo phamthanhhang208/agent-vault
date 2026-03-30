@@ -183,6 +183,54 @@ export default function LandingPage() {
             </div>
           </section>
 
+          {/* Multi-Vault */}
+          <section className="py-20 border-t border-slate-800/50">
+            <h2 className="text-3xl font-bold text-white text-center mb-4">Multi-Vault Isolation</h2>
+            <p className="text-slate-400 text-center mb-12 max-w-lg mx-auto">
+              One user, multiple agents. Each with different permissions. Complete isolation.
+            </p>
+
+            <div className="max-w-3xl mx-auto overflow-hidden rounded-2xl border border-slate-800">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-900 border-b border-slate-800">
+                    <th className="px-5 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">Vault</th>
+                    <th className="px-5 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">Agent</th>
+                    <th className="px-5 py-3 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">GitHub</th>
+                    <th className="px-5 py-3 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">Gmail</th>
+                    <th className="px-5 py-3 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">Slack</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/50">
+                  <tr className="bg-slate-950">
+                    <td className="px-5 py-3 text-white font-medium">Personal</td>
+                    <td className="px-5 py-3 text-indigo-400">OpenClaw</td>
+                    <td className="px-5 py-3 text-center"><span className="text-emerald-500 text-xs">Read + Write</span></td>
+                    <td className="px-5 py-3 text-center"><span className="text-emerald-500 text-xs">Read + Send</span></td>
+                    <td className="px-5 py-3 text-center"><span className="text-emerald-500 text-xs">Read + Send</span></td>
+                  </tr>
+                  <tr className="bg-slate-950">
+                    <td className="px-5 py-3 text-white font-medium">Work</td>
+                    <td className="px-5 py-3 text-indigo-400">Cursor</td>
+                    <td className="px-5 py-3 text-center"><span className="text-emerald-500 text-xs">Read + Write</span></td>
+                    <td className="px-5 py-3 text-center"><span className="text-amber-500 text-xs">Read only</span></td>
+                    <td className="px-5 py-3 text-center"><span className="text-red-500 text-xs">Blocked</span></td>
+                  </tr>
+                  <tr className="bg-slate-950">
+                    <td className="px-5 py-3 text-white font-medium">Public</td>
+                    <td className="px-5 py-3 text-indigo-400">Discord Bot</td>
+                    <td className="px-5 py-3 text-center"><span className="text-amber-500 text-xs">Read only</span></td>
+                    <td className="px-5 py-3 text-center"><span className="text-red-500 text-xs">Blocked</span></td>
+                    <td className="px-5 py-3 text-center"><span className="text-red-500 text-xs">Blocked</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="text-center text-xs text-slate-600 mt-4">
+              Each vault gets a unique MCP URL + token. Different agents, different powers.
+            </p>
+          </section>
+
           {/* Approval Flow Visual */}
           <section className="py-20 border-t border-slate-800/50">
             <h2 className="text-3xl font-bold text-white text-center mb-4">Human-in-the-Loop</h2>
