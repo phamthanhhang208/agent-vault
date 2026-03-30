@@ -4,19 +4,18 @@
  * Sends approval requests to the user's device via Auth0 Guardian push
  * or email. Used for human-in-the-loop approval of write actions.
  *
- * TODO: Phase 5 — implement with @auth0/ai SDK
+ * Flow:
+ * 1. Agent calls a write tool → MCP server detects 'approval' policy
+ * 2. We call Auth0 CIBA endpoint to send a push notification
+ * 3. User approves/rejects via Guardian app (or email fallback)
+ * 4. We poll the CIBA token endpoint for the result
+ * 5. Meanwhile, user can also approve via the dashboard (dual-path)
  */
-
-export interface CIBAConfig {
-  domain: string;
-  clientId: string;
-  clientSecret: string;
-}
 
 export interface CIBAInitiateResponse {
   auth_req_id: string;
   expires_in: number;
-  interval: number;  // polling interval in seconds
+  interval: number;
 }
 
 export type CIBAStatus = 'pending' | 'approved' | 'rejected' | 'expired';
@@ -26,69 +25,117 @@ export interface CIBAResult {
   auth_req_id: string;
 }
 
-export class CIBAClient {
-  private config: CIBAConfig;
+/**
+ * Initiate a CIBA approval request via Auth0.
+ * Sends a push notification to the user via Guardian.
+ */
+export async function initiateCIBA(
+  userId: string,
+  bindingMessage: string,
+  expirySeconds = 300
+): Promise<CIBAInitiateResponse> {
+  const domain = process.env.AUTH0_DOMAIN;
+  const clientId = process.env.AUTH0_TV_CLIENT_ID || process.env.AUTH0_CLIENT_ID;
+  const clientSecret = process.env.AUTH0_TV_CLIENT_SECRET || process.env.AUTH0_CLIENT_SECRET;
 
-  constructor(config: CIBAConfig) {
-    this.config = config;
+  if (!domain || !clientId || !clientSecret) {
+    throw new Error('Auth0 CIBA configuration missing');
   }
 
-  /**
-   * Initiate a CIBA approval request.
-   * Sends a push notification to the user via Auth0 Guardian.
-   *
-   * @param userId - Auth0 user ID (sub claim)
-   * @param bindingMessage - Human-readable description shown on the approval prompt
-   * @param expirySeconds - How long to wait before timing out (default: 300 = 5 min)
-   */
-  async initiateRequest(
-    userId: string,
-    bindingMessage: string,
-    expirySeconds = 300
-  ): Promise<CIBAInitiateResponse> {
-    // TODO: Implement with @auth0/ai CIBA SDK
-    // const ciba = new CIBA({ ...this.config });
-    // return ciba.initiateRequest({
-    //   loginHint: { sub: userId },
-    //   bindingMessage,
-    //   scope: 'openid',
-    //   requestedExpiry: expirySeconds,
-    // });
+  const response = await fetch(`https://${domain}/bc-authorize`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      client_id: clientId,
+      client_secret: clientSecret,
+      login_hint: { format: 'iss_sub', iss: `https://${domain}/`, sub: userId },
+      binding_message: bindingMessage,
+      scope: 'openid',
+      requested_expiry: expirySeconds,
+    }),
+  });
 
-    throw new Error('CIBAClient.initiateRequest not yet implemented');
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'unknown' }));
+    console.error('[CIBA] Initiation failed:', error);
+    throw new Error(`CIBA initiation failed: ${error.error_description || error.error || response.statusText}`);
   }
 
-  /**
-   * Poll Auth0 for the result of a CIBA request.
-   * Respects the interval returned by initiateRequest.
-   *
-   * @param authReqId - The auth_req_id from initiateRequest
-   * @param interval - Polling interval in seconds
-   * @param maxAttempts - Maximum number of poll attempts before giving up
-   */
-  async pollForResult(
-    authReqId: string,
-    interval = 5,
-    maxAttempts = 60
-  ): Promise<CIBAResult> {
-    // TODO: Implement with @auth0/ai CIBA SDK
-    // Polls the CIBA token endpoint every `interval` seconds
-    // Returns when user approves, rejects, or timeout expires
-
-    throw new Error('CIBAClient.pollForResult not yet implemented');
-  }
+  return response.json();
 }
 
-// Singleton instance
-let cibaInstance: CIBAClient | null = null;
+/**
+ * Poll Auth0 for the result of a CIBA request.
+ */
+export async function pollCIBA(authReqId: string): Promise<CIBAResult> {
+  const domain = process.env.AUTH0_DOMAIN;
+  const clientId = process.env.AUTH0_TV_CLIENT_ID || process.env.AUTH0_CLIENT_ID;
+  const clientSecret = process.env.AUTH0_TV_CLIENT_SECRET || process.env.AUTH0_CLIENT_SECRET;
 
-export function getCIBAClient(): CIBAClient {
-  if (!cibaInstance) {
-    cibaInstance = new CIBAClient({
-      domain: process.env.AUTH0_DOMAIN!,
-      clientId: process.env.AUTH0_TV_CLIENT_ID!,
-      clientSecret: process.env.AUTH0_TV_CLIENT_SECRET!,
-    });
+  const response = await fetch(`https://${domain}/oauth/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      client_id: clientId,
+      client_secret: clientSecret,
+      auth_req_id: authReqId,
+      grant_type: 'urn:openid:params:grant-type:ciba',
+    }),
+  });
+
+  if (response.ok) {
+    return { status: 'approved', auth_req_id: authReqId };
   }
-  return cibaInstance;
+
+  const error = await response.json().catch(() => ({ error: 'unknown' }));
+
+  if (error.error === 'authorization_pending') {
+    return { status: 'pending', auth_req_id: authReqId };
+  }
+
+  if (error.error === 'slow_down') {
+    return { status: 'pending', auth_req_id: authReqId };
+  }
+
+  if (error.error === 'expired_token') {
+    return { status: 'expired', auth_req_id: authReqId };
+  }
+
+  if (error.error === 'access_denied') {
+    return { status: 'rejected', auth_req_id: authReqId };
+  }
+
+  console.error('[CIBA] Poll error:', error);
+  return { status: 'rejected', auth_req_id: authReqId };
+}
+
+/**
+ * Wait for a CIBA request to be resolved.
+ * Polls at the specified interval, up to maxAttempts.
+ * Returns early if resolved via dashboard (checked via callback).
+ */
+export async function waitForCIBA(
+  authReqId: string,
+  checkDashboardResolution: () => Promise<CIBAStatus | null>,
+  interval = 5,
+  maxAttempts = 60
+): Promise<CIBAResult> {
+  for (let i = 0; i < maxAttempts; i++) {
+    // Check dashboard resolution first (faster path)
+    const dashboardStatus = await checkDashboardResolution();
+    if (dashboardStatus && dashboardStatus !== 'pending') {
+      return { status: dashboardStatus, auth_req_id: authReqId };
+    }
+
+    // Poll CIBA
+    const result = await pollCIBA(authReqId);
+    if (result.status !== 'pending') {
+      return result;
+    }
+
+    // Wait before next poll
+    await new Promise((resolve) => setTimeout(resolve, interval * 1000));
+  }
+
+  return { status: 'expired', auth_req_id: authReqId };
 }
