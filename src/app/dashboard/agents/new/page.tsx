@@ -12,6 +12,7 @@ import {
   Loader2,
   Copy,
   CheckCircle,
+  Ticket,
 } from 'lucide-react';
 import type { Policy, PolicyRule, PolicyState, ServiceName } from '@/types';
 import { SERVICE_TEMPLATES } from '@/types';
@@ -20,12 +21,14 @@ const SERVICE_ICONS: Record<string, typeof Github> = {
   GitHub: Github,
   Slack: Slack,
   'Google Workspace': Mail,
+  Jira: Ticket,
 };
 
 const SERVICE_COLORS: Record<string, string> = {
   GitHub: 'bg-slate-800',
   Slack: 'bg-purple-600',
   'Google Workspace': 'bg-blue-500',
+  Jira: 'bg-blue-600',
 };
 
 const POLICY_STATE_STYLES: Record<PolicyState, { bg: string; text: string; label: string }> = {

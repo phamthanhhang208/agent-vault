@@ -12,6 +12,7 @@ import {
   Loader2,
   Pause,
   Play,
+  Ticket,
 } from 'lucide-react';
 import Link from 'next/link';
 import type { Agent, ServiceName } from '@/types';
@@ -20,6 +21,7 @@ const SERVICE_ICONS: Record<string, typeof Github> = {
   GitHub: Github,
   Slack: Slack,
   'Google Workspace': Mail,
+  Jira: Ticket,
 };
 
 export default function AgentsPage() {
