@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import {
   Zap,
   AlertCircle,
@@ -8,19 +9,41 @@ import {
   Copy,
   CheckCircle,
   Shield,
+  Clock,
+  XCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useDashboardStore } from '@/stores/dashboard-store';
+import type { AuditEntry, ApprovalRequest } from '@/types';
 
 export default function DashboardOverview() {
   const { copyToClipboard, copiedText } = useDashboardStore();
+  const [stats, setStats] = useState({ actionsToday: 0, pendingApprovals: 0, activeAgents: 0 });
+  const [recentEntries, setRecentEntries] = useState<AuditEntry[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<ApprovalRequest[]>([]);
 
-  // TODO: Replace with real data from API
-  const stats = {
-    actionsToday: 0,
-    pendingApprovals: 0,
-    activeAgents: 0,
-  };
+  useEffect(() => {
+    // Fetch stats in parallel
+    Promise.all([
+      fetch('/api/audit?limit=5').then((r) => r.json()),
+      fetch('/api/approvals?status=pending').then((r) => r.json()),
+      fetch('/api/agents').then((r) => r.json()),
+    ])
+      .then(([auditJson, approvalsJson, agentsJson]) => {
+        const auditData = auditJson.data || { entries: [], stats: { actionsToday: 0 } };
+        const approvals = approvalsJson.data || [];
+        const agents = agentsJson.data || [];
+
+        setStats({
+          actionsToday: auditData.stats?.actionsToday || 0,
+          pendingApprovals: approvals.length,
+          activeAgents: agents.filter((a: { status: string }) => a.status === 'active').length,
+        });
+        setRecentEntries(auditData.entries || []);
+        setPendingRequests(approvals.slice(0, 4));
+      })
+      .catch(() => {});
+  }, []);
 
   const mcpUrl = `https://agentvault.vercel.app/mcp/universal`;
 
@@ -35,9 +58,7 @@ export default function DashboardOverview() {
             To isolate access, generate specific URLs in the Agents tab.
           </p>
           <div className="flex items-center gap-2 p-3 bg-slate-950/80 rounded-xl border border-slate-800 group">
-            <code className="text-indigo-400 flex-1 truncate font-mono text-sm">
-              {mcpUrl}
-            </code>
+            <code className="text-indigo-400 flex-1 truncate font-mono text-sm">{mcpUrl}</code>
             <button
               onClick={() => copyToClipboard(mcpUrl)}
               className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
@@ -75,9 +96,11 @@ export default function DashboardOverview() {
             <div className="p-2 bg-amber-500/10 rounded-lg">
               <AlertCircle className="text-amber-500" size={20} />
             </div>
-            <span className="text-xs font-semibold text-amber-500 bg-amber-500/10 px-2 py-1 rounded-full">
-              ACTION REQUIRED
-            </span>
+            {stats.pendingApprovals > 0 && (
+              <span className="text-xs font-semibold text-amber-500 bg-amber-500/10 px-2 py-1 rounded-full">
+                ACTION REQUIRED
+              </span>
+            )}
           </div>
           <div className="text-2xl font-bold text-white">{stats.pendingApprovals}</div>
           <div className="text-sm text-slate-500">Awaiting your approval</div>
@@ -104,20 +127,66 @@ export default function DashboardOverview() {
       <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
         <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
           <h3 className="font-semibold text-white flex items-center gap-2">
-            <Inbox size={18} className="text-indigo-400" /> Recent Action Queue
+            <Inbox size={18} className="text-indigo-400" /> Recent Activity
           </h3>
           <Link
-            href="/dashboard/approvals"
+            href="/dashboard/logs"
             className="text-xs text-indigo-400 hover:text-indigo-300 font-medium"
           >
-            Open Approval Manager →
+            View All Logs →
           </Link>
         </div>
         <div className="divide-y divide-slate-800/50">
-          <div className="px-6 py-4 text-center text-sm text-slate-500">
-            <Shield size={24} className="mx-auto text-slate-700 mb-2" />
-            Action queue will appear here once agents are configured.
-          </div>
+          {recentEntries.length === 0 && pendingRequests.length === 0 ? (
+            <div className="px-6 py-4 text-center text-sm text-slate-500">
+              <Shield size={24} className="mx-auto text-slate-700 mb-2" />
+              Action queue will appear here once agents are configured.
+            </div>
+          ) : (
+            <>
+              {pendingRequests.map((req) => (
+                <Link
+                  key={req.id}
+                  href="/dashboard/approvals"
+                  className="px-6 py-3 flex items-center justify-between hover:bg-slate-800/30 transition-colors block"
+                >
+                  <div className="flex items-center gap-3">
+                    <Clock size={16} className="text-amber-500" />
+                    <div>
+                      <span className="text-sm text-white">{req.agentName}</span>
+                      <code className="text-xs text-slate-400 font-mono ml-2">
+                        {req.service}:{req.action}
+                      </code>
+                    </div>
+                  </div>
+                  <span className="text-xs text-amber-500 font-bold">PENDING</span>
+                </Link>
+              ))}
+              {recentEntries.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="px-6 py-3 flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    {entry.status === 'executed' || entry.status === 'approved' ? (
+                      <CheckCircle size={16} className="text-emerald-500" />
+                    ) : (
+                      <XCircle size={16} className="text-red-500" />
+                    )}
+                    <div>
+                      <span className="text-sm text-white">{entry.agentName}</span>
+                      <code className="text-xs text-slate-400 font-mono ml-2">
+                        {entry.service}:{entry.action}
+                      </code>
+                    </div>
+                  </div>
+                  <span className="text-xs text-slate-500">
+                    {new Date(entry.timestamp).toLocaleTimeString()}
+                  </span>
+                </div>
+              ))}
+            </>
+          )}
         </div>
       </div>
     </div>

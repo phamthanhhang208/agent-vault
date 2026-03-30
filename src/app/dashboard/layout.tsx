@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { Sidebar } from '@/components/dashboard/sidebar';
 import { Toast } from '@/components/dashboard/toast';
@@ -10,9 +11,21 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const [pendingCount, setPendingCount] = useState(0);
 
-  // TODO: Replace with real pending count from API
-  const pendingCount = 0;
+  useEffect(() => {
+    const fetchPending = () => {
+      fetch('/api/approvals?status=pending')
+        .then((r) => r.json())
+        .then((json) => setPendingCount((json.data || []).length))
+        .catch(() => {});
+    };
+
+    fetchPending();
+    // Refresh pending count every 10 seconds
+    const interval = setInterval(fetchPending, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   const isApprovals = pathname === '/dashboard/approvals';
 
