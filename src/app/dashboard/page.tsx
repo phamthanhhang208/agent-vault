@@ -9,19 +9,20 @@ import {
   CheckCircle,
   Shield,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useDashboardStore } from '@/stores/dashboard-store';
 
 export default function DashboardOverview() {
-  const { setActiveTab, copyToClipboard, copiedText } = useDashboardStore();
+  const { copyToClipboard, copiedText } = useDashboardStore();
 
   // TODO: Replace with real data from API
   const stats = {
-    actionsToday: 124,
-    pendingApprovals: 2,
-    activeAgents: 2,
+    actionsToday: 0,
+    pendingApprovals: 0,
+    activeAgents: 0,
   };
 
-  const mcpUrl = `https://agentvault.vercel.app/mcp/universal_${Math.random().toString(36).substring(2, 9)}`;
+  const mcpUrl = `https://agentvault.vercel.app/mcp/universal`;
 
   return (
     <div className="space-y-8 animate-fade-in p-8 max-w-6xl mx-auto">
@@ -66,9 +67,9 @@ export default function DashboardOverview() {
           <div className="text-sm text-slate-500">Actions processed today</div>
         </div>
 
-        <div
-          className="bg-slate-900 border border-slate-800 p-5 rounded-xl cursor-pointer hover:border-amber-500/50 transition-colors shadow-lg"
-          onClick={() => setActiveTab('approvals')}
+        <Link
+          href="/dashboard/approvals"
+          className="bg-slate-900 border border-slate-800 p-5 rounded-xl cursor-pointer hover:border-amber-500/50 transition-colors shadow-lg block"
         >
           <div className="flex items-center justify-between mb-4">
             <div className="p-2 bg-amber-500/10 rounded-lg">
@@ -80,11 +81,11 @@ export default function DashboardOverview() {
           </div>
           <div className="text-2xl font-bold text-white">{stats.pendingApprovals}</div>
           <div className="text-sm text-slate-500">Awaiting your approval</div>
-        </div>
+        </Link>
 
-        <div
-          className="bg-slate-900 border border-slate-800 p-5 rounded-xl cursor-pointer hover:border-indigo-500/50 transition-colors"
-          onClick={() => setActiveTab('agents')}
+        <Link
+          href="/dashboard/agents"
+          className="bg-slate-900 border border-slate-800 p-5 rounded-xl cursor-pointer hover:border-indigo-500/50 transition-colors block"
         >
           <div className="flex items-center justify-between mb-4">
             <div className="p-2 bg-indigo-500/10 rounded-lg">
@@ -96,7 +97,7 @@ export default function DashboardOverview() {
           </div>
           <div className="text-2xl font-bold text-white">{stats.activeAgents}</div>
           <div className="text-sm text-slate-500">Configured MCP endpoints</div>
-        </div>
+        </Link>
       </div>
 
       {/* Recent Action Queue */}
@@ -105,15 +106,14 @@ export default function DashboardOverview() {
           <h3 className="font-semibold text-white flex items-center gap-2">
             <Inbox size={18} className="text-indigo-400" /> Recent Action Queue
           </h3>
-          <button
-            onClick={() => setActiveTab('approvals')}
+          <Link
+            href="/dashboard/approvals"
             className="text-xs text-indigo-400 hover:text-indigo-300 font-medium"
           >
-            Open Approval Manager &rarr;
-          </button>
+            Open Approval Manager →
+          </Link>
         </div>
         <div className="divide-y divide-slate-800/50">
-          {/* TODO: Replace with real data */}
           <div className="px-6 py-4 text-center text-sm text-slate-500">
             <Shield size={24} className="mx-auto text-slate-700 mb-2" />
             Action queue will appear here once agents are configured.
