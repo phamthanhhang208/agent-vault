@@ -17,6 +17,7 @@ export const metadata: Metadata = {
     title: 'AgentVault — Permission Vaults for AI Agents',
     description: 'Auth0-powered permission vaults for AI agents.',
   },
+  icons: { icon: '/favicon.svg' },
 };
 
 export default function RootLayout({
