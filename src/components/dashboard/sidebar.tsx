@@ -1,6 +1,8 @@
 'use client';
 
-import { useUser } from '@auth0/nextjs-auth0/client';
+import { useUser } from '@auth0/nextjs-auth0';
+import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import {
   Shield,
   Activity,
@@ -9,32 +11,34 @@ import {
   User,
   Clock,
 } from 'lucide-react';
-import { useDashboardStore } from '@/stores/dashboard-store';
-import type { DashboardTab } from '@/types';
 
 interface NavItem {
-  tab: DashboardTab;
-  matchTabs?: DashboardTab[];  // also highlight for these tabs
+  href: string;
+  matchPaths?: string[];
   icon: typeof Activity;
   label: string;
-  getBadge?: () => number;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { tab: 'dashboard', icon: Activity, label: 'Overview' },
-  { tab: 'approvals', icon: ShieldCheck, label: 'Action Queue' },
-  { tab: 'connections', icon: Key, label: 'Vault Connections' },
-  { tab: 'agents', matchTabs: ['create_agent', 'agent_detail'], icon: User, label: 'Agents & Policies' },
-  { tab: 'logs', icon: Clock, label: 'Audit Logs' },
+  { href: '/dashboard', icon: Activity, label: 'Overview' },
+  { href: '/dashboard/approvals', icon: ShieldCheck, label: 'Action Queue' },
+  { href: '/dashboard/connections', icon: Key, label: 'Vault Connections' },
+  {
+    href: '/dashboard/agents',
+    matchPaths: ['/dashboard/agents/new', '/dashboard/agents/'],
+    icon: User,
+    label: 'Agents & Policies',
+  },
+  { href: '/dashboard/logs', icon: Clock, label: 'Audit Logs' },
 ];
 
 export function Sidebar({ pendingCount }: { pendingCount: number }) {
-  const { activeTab, setActiveTab } = useDashboardStore();
   const { user } = useUser();
+  const pathname = usePathname();
 
   const isActive = (item: NavItem) => {
-    if (activeTab === item.tab) return true;
-    if (item.matchTabs?.includes(activeTab)) return true;
+    if (pathname === item.href) return true;
+    if (item.matchPaths?.some((p) => pathname.startsWith(p))) return true;
     return false;
   };
 
@@ -53,12 +57,12 @@ export function Sidebar({ pendingCount }: { pendingCount: number }) {
         <nav className="space-y-1.5">
           {NAV_ITEMS.map((item) => {
             const active = isActive(item);
-            const badge = item.tab === 'approvals' ? pendingCount : 0;
+            const badge = item.href === '/dashboard/approvals' ? pendingCount : 0;
 
             return (
-              <button
-                key={item.tab}
-                onClick={() => setActiveTab(item.tab)}
+              <Link
+                key={item.href}
+                href={item.href}
                 className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${
                   active
                     ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
@@ -80,7 +84,7 @@ export function Sidebar({ pendingCount }: { pendingCount: number }) {
                     {badge}
                   </span>
                 )}
-              </button>
+              </Link>
             );
           })}
         </nav>
@@ -98,16 +102,16 @@ export function Sidebar({ pendingCount }: { pendingCount: number }) {
           <div className="flex items-center justify-between px-2">
             <div className="flex items-center gap-2 min-w-0">
               {user.picture ? (
-                <img src={user.picture} alt="" className="w-6 h-6 rounded-full" />
+                <img src={user.picture as string} alt="" className="w-6 h-6 rounded-full" />
               ) : (
                 <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-slate-500">
                   <User size={12} />
                 </div>
               )}
-              <span className="text-xs text-slate-400 truncate">{user.email}</span>
+              <span className="text-xs text-slate-400 truncate">{user.email as string}</span>
             </div>
             <a
-              href="/api/auth/logout"
+              href="/auth/logout"
               className="text-[10px] text-slate-500 hover:text-red-400 font-medium transition-colors shrink-0"
             >
               Log out
