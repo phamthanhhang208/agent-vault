@@ -57,18 +57,10 @@ When an agent hits a "Require Approval" action:
 3. Approve or deny from your phone
 4. Agent proceeds (or stops)
 
-No webhooks, no polling from the agent side. The MCP call just waits.
+**Dual-path resolution:** You can also approve directly from the AgentVault dashboard. Whichever responds first wins.
 
 ### 📋 Full Audit Log
-Every tool call is logged:
-```
-10:00 AM  github   list_repos       ✅ auto
-10:01 AM  github   create_issue     ⏳ pending → ✅ approved
-10:02 AM  gmail    send_email       🚫 blocked (not permitted)
-10:05 AM  slack    send_message     ⏳ pending → ❌ denied
-```
-
-See exactly what your agents are doing. Export as CSV. Full transparency.
+Every tool call is logged with timestamp, agent, service, action, risk level, status, resolution method, and execution time. Export as CSV for compliance.
 
 ---
 
@@ -78,7 +70,7 @@ See exactly what your agents are doing. Export as CSV. Full transparency.
 
 1. **Sign in** with Auth0
 2. **Connect services** — click "Connect GitHub", authorize via OAuth, done
-3. **Create a vault** — name it, pick services, set permissions per action
+3. **Create an agent** — name it, pick services, set permissions per action
 4. **Copy the MCP URL** — paste into your agent's MCP config
 5. **Done** — your agent has powers, within your rules
 
@@ -90,7 +82,7 @@ Any MCP-compatible agent can connect:
 {
   "mcpServers": {
     "vault": {
-      "url": "https://agentvault.vercel.app/mcp/srv_abc123",
+      "url": "https://agentvault.vercel.app/api/mcp/srv_abc123",
       "headers": {
         "Authorization": "Bearer avt_your_vault_token"
       }
@@ -141,11 +133,24 @@ The agent discovers only the tools you've permitted. Blocked tools don't appear.
 | Layer | Technology |
 |-------|-----------|
 | Frontend | Next.js 15 (App Router) + Tailwind CSS |
-| Auth | @auth0/nextjs-auth0 + Auth0 Token Vault |
-| Async Approval | @auth0/ai (CIBA) + Auth0 Guardian |
-| MCP Server | @modelcontextprotocol/sdk (Streamable HTTP) |
+| Auth | @auth0/nextjs-auth0 v4 + Auth0 Token Vault |
+| Async Approval | Auth0 CIBA + Auth0 Guardian |
+| MCP Server | @modelcontextprotocol/sdk (WebStandard Streamable HTTP) |
 | Storage | Vercel KV (Redis) |
 | Deploy | Vercel |
+| State | Zustand (client-side dashboard state) |
+
+---
+
+## Services Supported
+
+| Service | Read Tools | Write Tools (require approval) |
+|---------|-----------|-------------------------------|
+| **GitHub** | repos.read, issues.list | repos.write, issues.create, repos.delete |
+| **Google Workspace** | drive.read | drive.write, gmail.send |
+| **Slack** | chat.read | chat.write, channels.manage |
+
+More services can be added by configuring additional Auth0 connections — no code changes needed.
 
 ---
 
@@ -162,7 +167,7 @@ The agent discovers only the tools you've permitted. Blocked tools don't appear.
 # Clone and install
 git clone https://github.com/phamthanhhang208/agent-vault.git
 cd agent-vault
-npm install
+npm install --legacy-peer-deps
 
 # Configure environment
 cp .env.local.example .env.local
@@ -172,29 +177,11 @@ cp .env.local.example .env.local
 npm run dev
 ```
 
-### Auth0 Configuration
+### Deploy to Vercel
 
-See [docs/AUTH0_INTEGRATION.md](docs/AUTH0_INTEGRATION.md) for step-by-step Auth0 setup:
-1. Create Auth0 tenant + application
-2. Enable Token Vault grant type
-3. Add social connections (GitHub, Google, Slack)
-4. Configure CIBA for async approvals
-5. Set up Auth0 Guardian for push notifications
-
----
-
-## Services Supported
-
-Auth0 Token Vault provides 25+ OAuth integrations. AgentVault exposes them as MCP tools:
-
-| Service | Read Tools | Write Tools (require approval) |
-|---------|-----------|-------------------------------|
-| **GitHub** | List repos, read issues, read PRs | Create issue, push code, merge PR |
-| **Google Workspace** | Read emails, read calendar, read docs | Send email, create event, create doc |
-| **Slack** | List channels, read messages | Send message, create channel |
-| **Jira** | Read issues, read boards | Create issue, assign, transition |
-
-More services can be added by configuring additional Auth0 social connections — no code changes needed.
+```bash
+npx vercel --prod
+```
 
 ---
 
@@ -208,4 +195,17 @@ More services can be added by configuring additional Auth0 social connections �
 
 ---
 
-*Built solo for the Authorized to Act hackathon · April 2026*
+## Judging Criteria
+
+| Criterion | How We Address It |
+|---|---|
+| **Security Model** | Auth0 Token Vault (tokens never exposed), per-action policy matrix, CIBA approval for writes |
+| **User Control** | Granular allow/approval/block per action, multi-agent isolation, context injection |
+| **Technical Execution** | MCP Streamable HTTP (Web Standard), dynamic tool generation, real-time approval queue |
+| **Design** | Polished dark dashboard UI, intuitive policy editor, approval terminal UX |
+| **Potential Impact** | Any MCP client can plug in — universal auth layer for the agentic ecosystem |
+| **Insight Value** | Demonstrates that agent auth needs user-controlled permission boundaries, not blanket access |
+
+---
+
+*Built for the Authorized to Act hackathon · April 2026*
