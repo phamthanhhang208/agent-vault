@@ -62,13 +62,43 @@ async function handleMcpRequest(agent: Agent, req: Request): Promise<Response> {
 
   await mcpServer.connect(transport);
 
-  try {
-    const response = await transport.handleRequest(req);
-    return response;
-  } finally {
-    await transport.close();
-    await mcpServer.close();
+  // Return the response directly — don't close transport/server
+  // until the stream finishes. The finally block was killing the
+  // stream before the response was sent.
+  const response = await transport.handleRequest(req);
+
+  // Clean up AFTER the response body is consumed
+  if (response.body) {
+    const originalBody = response.body;
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const reader = originalBody.getReader();
+
+    // Pipe through and clean up when done
+    (async () => {
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          await writer.write(value);
+        }
+      } finally {
+        await writer.close();
+        await transport.close();
+        await mcpServer.close();
+      }
+    })();
+
+    return new Response(readable, {
+      status: response.status,
+      headers: response.headers,
+    });
   }
+
+  // Non-streaming response — safe to close immediately
+  await transport.close();
+  await mcpServer.close();
+  return response;
 }
 
 // POST /api/mcp/[serverId] — MCP Streamable HTTP (JSON-RPC)
