@@ -29,7 +29,7 @@ export default function LandingPage() {
             </Link>
           ) : (
             <a
-              href="/api/auth/login"
+              href="/auth/login"
               className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-all text-sm shadow-lg shadow-indigo-600/20"
             >
               Sign In <ArrowRight size={16} />
@@ -59,7 +59,7 @@ export default function LandingPage() {
 
           <div className="flex items-center justify-center gap-4 mb-16">
             <a
-              href="/api/auth/login"
+              href="/auth/login"
               className="flex items-center gap-2 px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-indigo-600/20 text-base"
             >
               Get Started <ArrowRight size={18} />
