@@ -78,3 +78,17 @@ The key concept is **multi-vault**: one user can have multiple agents with diffe
 **SDK / npm package** — `npx agentvault init` to scaffold a new vault, configure Auth0, and get an MCP URL in under 2 minutes.
 
 **Production deployment** — Custom domains, encrypted vault tokens, SOC2-relevant audit log retention, and multi-tenant support for teams.
+
+## Bonus Blog Post
+
+### The Moment Token Vault Clicked — and the Bug That Almost Killed Our Demo
+
+I'll be honest: when we started AgentVault, I thought Token Vault was just a fancy secrets manager. Store some OAuth tokens, fetch them later, done. I was wrong.
+
+The real power hit me when I realized Token Vault doesn't just *store* tokens — it *manages the entire lifecycle*. Our agent never holds a token longer than a single API call. It asks Token Vault for a fresh access token via the refresh token exchange, makes the GitHub/Gmail/Slack call, and discards it. If the provider token expires mid-session, Token Vault silently refreshes it. If the user revokes access, the next exchange fails cleanly. We wrote zero token management code.
+
+But the best moment was wiring CIBA into MCP tool calls. When an agent calls `gmail_send`, our MCP server triggers a CIBA request to Auth0. Auth0 sends a push notification to the user's phone via Guardian. The user taps "Approve." The MCP call — which has been blocking this entire time — finally returns. From the agent's perspective, it just called a tool that took a few extra seconds. It has no idea a human was consulted. That invisible human-in-the-loop pattern is something I'd never seen before, and it only works because Token Vault and CIBA share the same identity context.
+
+Then came the bug that nearly ended us. Our MCP server returned 200 OK with an empty body. Every time. The `WebStandardStreamableHTTPServerTransport` was producing a valid SSE stream, but our `finally` block called `transport.close()` before Next.js could flush the response. The stream was being killed before a single byte was sent. The fix? Pipe the response body through a `TransformStream` and defer cleanup until the stream completes. Three lines of code, twelve hours of debugging.
+
+Token Vault taught us that identity infrastructure for agents isn't about storing secrets — it's about controlling *when and whether* those secrets are used. That distinction changes everything.
