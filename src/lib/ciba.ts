@@ -95,10 +95,12 @@ export async function pollCIBA(authReqId: string): Promise<CIBAResult> {
   });
 
   if (response.ok) {
+    console.log('[CIBA] Poll resolved: approved', { auth_req_id: authReqId });
     return { status: 'approved', auth_req_id: authReqId };
   }
 
   const error = await response.json().catch(() => ({ error: 'unknown' }));
+  console.log('[CIBA] Poll response:', { status: response.status, error: error.error, auth_req_id: authReqId });
 
   if (error.error === 'authorization_pending') {
     return { status: 'pending', auth_req_id: authReqId };
@@ -116,7 +118,7 @@ export async function pollCIBA(authReqId: string): Promise<CIBAResult> {
     return { status: 'rejected', auth_req_id: authReqId };
   }
 
-  console.error('[CIBA] Poll error:', error);
+  console.error('[CIBA] Poll unexpected error:', error);
   return { status: 'rejected', auth_req_id: authReqId };
 }
 

@@ -235,7 +235,9 @@ async function waitForApproval(
   userId: string,
   requestId: string,
   cibaRequestId: string | null,
-  timeoutMs = 120000 // 2 minutes for serverless
+  // Vercel Hobby maxDuration = 60s, Pro = 300s.
+  // Keep well under the limit to allow cleanup before the function is killed.
+  timeoutMs = 55000
 ): Promise<'approved' | 'rejected' | 'expired'> {
   const startTime = Date.now();
   const pollInterval = 3000; // 3 seconds
@@ -250,22 +252,27 @@ async function waitForApproval(
 
     // Path 2: Poll CIBA (Auth0 Guardian push notification)
     if (cibaRequestId) {
-      const cibaResult = await pollCIBA(cibaRequestId);
-      if (cibaResult.status !== 'pending') {
-        // Sync the resolution back to KV so dashboard/audit stay consistent
-        if (request) {
-          const resolvedStatus = cibaResult.status === 'approved' ? 'approved' : 'rejected';
-          await setJson(kvKey, {
-            ...request,
-            status: resolvedStatus,
-            resolvedVia: 'ciba',
-            resolvedAt: new Date().toISOString(),
-          });
-        }
+      try {
+        const cibaResult = await pollCIBA(cibaRequestId);
+        if (cibaResult.status !== 'pending') {
+          // Sync the resolution back to KV so dashboard/audit stay consistent
+          if (request) {
+            const resolvedStatus = cibaResult.status === 'approved' ? 'approved' : 'rejected';
+            await setJson(kvKey, {
+              ...request,
+              status: resolvedStatus,
+              resolvedVia: 'ciba',
+              resolvedAt: new Date().toISOString(),
+            });
+          }
 
-        if (cibaResult.status === 'approved') return 'approved';
-        if (cibaResult.status === 'rejected') return 'rejected';
-        return 'expired';
+          if (cibaResult.status === 'approved') return 'approved';
+          if (cibaResult.status === 'rejected') return 'rejected';
+          return 'expired';
+        }
+      } catch (error) {
+        // CIBA poll failed — log but continue polling via dashboard path
+        console.warn('[waitForApproval] CIBA poll error (will retry):', error);
       }
     }
 
