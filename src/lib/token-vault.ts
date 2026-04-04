@@ -118,8 +118,22 @@ export function getConnectUrl(
     state,
   });
 
-  // Connected Accounts flow via Auth0
-  return `${domain}/authorize-connected-account?${params.toString()}`;
+  // Connected Accounts flow via Auth0 My Account API
+  // Requires the user to be authenticated first (session cookie)
+  const clientId = process.env.AUTH0_CLIENT_ID || '';
+  
+  const authorizeParams = new URLSearchParams({
+    client_id: clientId,
+    response_type: 'code',
+    redirect_uri: redirectUri,
+    scope: 'openid profile email offline_access',
+    connection,
+    connection_scope: scopes.join(' '),
+    state,
+    access_type: 'link',
+  });
+  
+  return `${domain}/authorize?${authorizeParams.toString()}`;
 }
 
 /**
