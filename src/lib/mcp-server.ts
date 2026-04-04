@@ -9,7 +9,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { nanoid } from 'nanoid';
-import { setJson, getJson } from './kv';
+import { setJson, getJson, getByPrefix } from './kv';
 import { initiateCIBA, pollCIBA } from './ciba';
 import { logAction } from './audit';
 import type { Agent, ApprovalRequest } from '@/types';
@@ -175,7 +175,28 @@ async function executeToolAction(
 }
 
 /**
+ * Find an existing pending approval request for the same agent + service + action.
+ * Returns it if found, so we can reuse instead of creating a duplicate.
+ */
+async function findPendingApproval(
+  agent: Agent,
+  service: string,
+  action: string
+): Promise<ApprovalRequest | null> {
+  const requests = await getByPrefix<ApprovalRequest>(`approval:${agent.userId}:`);
+  return requests.find(
+    (r) =>
+      r.status === 'pending' &&
+      r.agentId === agent.id &&
+      r.service === service &&
+      r.action === action
+  ) ?? null;
+}
+
+/**
  * Create an approval request and optionally trigger CIBA push notification.
+ * If a pending request already exists for the same agent/service/action, reuse it
+ * instead of creating a duplicate notification.
  */
 async function createApprovalRequest(
   agent: Agent,
@@ -184,6 +205,13 @@ async function createApprovalRequest(
   risk: 'Low' | 'Medium' | 'High',
   params: Record<string, unknown>
 ): Promise<ApprovalRequest> {
+  // Deduplicate: reuse existing pending request if one exists
+  const existing = await findPendingApproval(agent, service, action);
+  if (existing) {
+    console.log('[MCP] Reusing existing pending approval:', existing.id);
+    return existing;
+  }
+
   const requestId = `req_${nanoid(12)}`;
   let cibaRequestId: string | null = null;
 
