@@ -150,9 +150,9 @@ claude
 
 ---
 
-## SCENE 5 — Write Action + Phone Approval ⭐ [2:00 - 2:35]
+## SCENE 5 — Write Action + Dashboard Approval ⭐ [2:00 - 2:35]
 
-**On screen:** Claude Code + phone visible (split screen or phone propped up)
+**On screen:** Claude Code on the left, browser with AgentVault dashboard on the right (split screen)
 
 **Type in Claude:**
 > "I'm building a TodoFlow app — a todo list with pomodoro timer. Create an issue on phamthanhhang208/agent-vault-demo titled 'Add pomodoro timer component' with description 'Build a 25min work / 5min break timer with start, pause, reset controls. Show session count and daily stats.'"
@@ -163,16 +163,20 @@ claude
 *Claude shows it's waiting / processing.*
 
 **Say:**
-> "And there's my phone."
+> "The request is now in the Action Queue."
 
-**On screen:** Phone shows Auth0 Guardian push notification
+**Action:** Switch to AgentVault dashboard → **Action Queue** page. The pending request appears with:
+- Agent name, action, service
+- Risk level
+- Full payload
+- Approve / Reject buttons
 
-**Say (reading the notification):**
-> "AgentVault: Claude Code Assistant wants to create an issue on GitHub. Approve or deny."
+**Say:**
+> "Here it is — Claude Code Assistant wants to create an issue on GitHub. I can see the exact payload, the risk level, and the agent's reasoning. Let me approve it."
 
-**Action:** Tap **Approve** on phone.
+**Action:** Click **Approve** ✅
 
-**On screen:** Claude Code continues, issue created.
+**On screen:** Switch back to Claude Code — it continues and creates the issue.
 
 **Say:**
 > "Approved. The issue is now on GitHub. Claude didn't know about Auth0, didn't handle OAuth. It just called an MCP tool and waited. AgentVault handled the rest."
@@ -213,7 +217,7 @@ claude
 8. "A read action — Allow in our policy. Executes immediately."
 9. "The agent never held a credential."
 10. "A write action. Creating an issue requires approval. The MCP call pauses..."
-11. "There's my phone. Approve."
+11. "Here it is in the Action Queue — the exact payload, risk level, agent reasoning. Let me approve it."
 12. "Claude didn't know about Auth0. It just called an MCP tool. AgentVault handled the rest."
 13. "Every tool call is logged. Auto-executed, approved, blocked."
 14. "Connect once. Control everything. Plug into any agent."
@@ -224,8 +228,8 @@ claude
 
 | Problem | Fix |
 |---------|-----|
-| MCP timeout on write | Approve faster! Or pre-approve via dashboard |
-| Guardian push not arriving | Approve via dashboard Action Queue instead |
+| MCP timeout on write | Approve faster! The MCP call has a timeout |
+| Action Queue not showing request | Refresh the page — it polls every 3s |
 | Claude can't find MCP server | Check `.mcp.json` URL is correct |
 | "Unauthorized" from MCP | Bearer token expired or wrong — recreate agent |
 | Tool returns mock data | Token Vault not connected — OK for demo, still shows flow |
