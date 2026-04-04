@@ -10,14 +10,23 @@
 
 ---
 
-## OPENING — Architecture Slide [0:00 - 0:15]
+## OPENING — The Problem + The Solution [0:00 - 0:20]
 
-**On screen:** Show `docs/images/architecture.png`
+**On screen:** Show `docs/images/before.png`
+
+![Before](https://raw.githubusercontent.com/phamthanhhang208/agent-vault/main/docs/images/before.png)
+
+**Say:**
+> "This is how AI agents work today. Raw API tokens hardcoded in env files. Full access to everything. No permission control, no approval flow, no audit trail. If a token leaks — everything is exposed."
+
+*Pause 1 second*
+
+**On screen:** Transition to `docs/images/architecture.png`
 
 ![Architecture](https://raw.githubusercontent.com/phamthanhhang208/agent-vault/main/docs/images/architecture.png)
 
 **Say:**
-> "AI agents can read your emails, push code, and send messages. But who controls what they're allowed to do? AgentVault solves this. You connect your services through Auth0 Token Vault, define permissions per agent, and get an MCP URL. The agent only sees what you allow. Writes need your approval. Everything is logged."
+> "AgentVault fixes this. You connect your services through Auth0 Token Vault. Define permissions per agent. Get an MCP URL. The agent only sees what you allow. Writes need your approval on your phone. Everything is logged."
 
 ---
 
