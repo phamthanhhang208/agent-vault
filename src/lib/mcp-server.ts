@@ -10,7 +10,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { nanoid } from 'nanoid';
 import { setJson, getJson } from './kv';
-import { initiateCIBA, waitForCIBA } from './ciba';
+import { initiateCIBA, pollCIBA } from './ciba';
 import { logAction } from './audit';
 import type { Agent, ApprovalRequest } from '@/types';
 import { SCHEMAS as GH_SCHEMAS, executeGitHubTool } from './tools/github';
@@ -224,6 +224,12 @@ async function createApprovalRequest(
 /**
  * Wait for an approval request to be resolved (via dashboard or CIBA).
  * For serverless: uses short polling with a timeout.
+ *
+ * Dual-path resolution:
+ *   1. Dashboard — user clicks approve/reject on the web UI → KV store is updated
+ *   2. CIBA — user approves via Auth0 Guardian push notification on their phone
+ *
+ * Whichever path resolves first wins.
  */
 async function waitForApproval(
   userId: string,
@@ -233,12 +239,34 @@ async function waitForApproval(
 ): Promise<'approved' | 'rejected' | 'expired'> {
   const startTime = Date.now();
   const pollInterval = 3000; // 3 seconds
+  const kvKey = `approval:${userId}:${requestId}`;
 
   while (Date.now() - startTime < timeoutMs) {
-    // Check if resolved via dashboard
-    const request = await getJson<ApprovalRequest>(`approval:${userId}:${requestId}`);
+    // Path 1: Check if resolved via dashboard (KV store)
+    const request = await getJson<ApprovalRequest>(kvKey);
     if (request && request.status !== 'pending') {
       return request.status === 'approved' ? 'approved' : 'rejected';
+    }
+
+    // Path 2: Poll CIBA (Auth0 Guardian push notification)
+    if (cibaRequestId) {
+      const cibaResult = await pollCIBA(cibaRequestId);
+      if (cibaResult.status !== 'pending') {
+        // Sync the resolution back to KV so dashboard/audit stay consistent
+        if (request) {
+          const resolvedStatus = cibaResult.status === 'approved' ? 'approved' : 'rejected';
+          await setJson(kvKey, {
+            ...request,
+            status: resolvedStatus,
+            resolvedVia: 'ciba',
+            resolvedAt: new Date().toISOString(),
+          });
+        }
+
+        if (cibaResult.status === 'approved') return 'approved';
+        if (cibaResult.status === 'rejected') return 'rejected';
+        return 'expired';
+      }
     }
 
     await new Promise((resolve) => setTimeout(resolve, pollInterval));
