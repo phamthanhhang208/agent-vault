@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect, useCallback } from 'react';
 import {
   Zap,
   AlertCircle,
@@ -8,19 +9,68 @@ import {
   Copy,
   CheckCircle,
   Shield,
+  Clock,
+  XCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useDashboardStore } from '@/stores/dashboard-store';
+import type { ApprovalRequest, AuditEntry } from '@/types';
+
+const STATUS_ICON: Record<string, typeof CheckCircle> = {
+  executed: CheckCircle,
+  approved: CheckCircle,
+  rejected: XCircle,
+  pending: Clock,
+};
+
+const STATUS_COLOR: Record<string, string> = {
+  executed: 'text-green-400',
+  approved: 'text-blue-400',
+  rejected: 'text-red-400',
+  pending: 'text-yellow-400',
+};
 
 export default function DashboardOverview() {
   const { copyToClipboard, copiedText } = useDashboardStore();
+  const [stats, setStats] = useState({ actionsToday: 0, pendingApprovals: 0, activeAgents: 0 });
+  const [recentActions, setRecentActions] = useState<AuditEntry[]>([]);
 
-  // TODO: Replace with real data from API
-  const stats = {
-    actionsToday: 0,
-    pendingApprovals: 0,
-    activeAgents: 0,
-  };
+  const fetchData = useCallback(async () => {
+    try {
+      // Fetch audit stats + recent entries
+      const auditRes = await fetch('/api/audit?limit=5');
+      if (auditRes.ok) {
+        const auditData = await auditRes.json();
+        const entries = auditData.data?.entries || [];
+        const auditStats = auditData.data?.stats || {};
+        setRecentActions(entries);
+        setStats((prev) => ({ ...prev, actionsToday: auditStats.actionsToday || entries.length }));
+      }
+
+      // Fetch pending approvals count
+      const appRes = await fetch('/api/approvals?status=pending');
+      if (appRes.ok) {
+        const appData = await appRes.json();
+        const pending = (appData.data || []).filter((a: ApprovalRequest) => a.status === 'pending');
+        setStats((prev) => ({ ...prev, pendingApprovals: pending.length }));
+      }
+
+      // Fetch agent count
+      const agentRes = await fetch('/api/agents');
+      if (agentRes.ok) {
+        const agentData = await agentRes.json();
+        setStats((prev) => ({ ...prev, activeAgents: (agentData.data || []).length }));
+      }
+    } catch {
+      // silently fail
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 5000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
 
   const mcpUrl = `https://agentvault.vercel.app/mcp/universal`;
 
@@ -104,20 +154,41 @@ export default function DashboardOverview() {
       <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
         <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
           <h3 className="font-semibold text-white flex items-center gap-2">
-            <Inbox size={18} className="text-indigo-400" /> Recent Action Queue
+            <Inbox size={18} className="text-indigo-400" /> Recent Activity
           </h3>
           <Link
-            href="/dashboard/approvals"
+            href="/dashboard/logs"
             className="text-xs text-indigo-400 hover:text-indigo-300 font-medium"
           >
-            Open Approval Manager →
+            View All Logs →
           </Link>
         </div>
         <div className="divide-y divide-slate-800/50">
-          <div className="px-6 py-4 text-center text-sm text-slate-500">
-            <Shield size={24} className="mx-auto text-slate-700 mb-2" />
-            Action queue will appear here once agents are configured.
-          </div>
+          {recentActions.length === 0 ? (
+            <div className="px-6 py-8 text-center text-sm text-slate-500">
+              <Shield size={24} className="mx-auto text-slate-700 mb-2" />
+              Activity will appear here once agents start making tool calls.
+            </div>
+          ) : (
+            recentActions.map((entry) => {
+              const Icon = STATUS_ICON[entry.status] || CheckCircle;
+              const color = STATUS_COLOR[entry.status] || 'text-slate-400';
+              return (
+                <div key={entry.id} className="px-6 py-3 flex items-center gap-4 hover:bg-slate-800/30 transition-colors">
+                  <Icon size={14} className={color} />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs text-white font-medium">{entry.agentName}</span>
+                    <span className="text-slate-600 mx-2">·</span>
+                    <span className="text-xs text-slate-400">{entry.service} → {entry.action}</span>
+                  </div>
+                  <span className={`text-[10px] font-bold ${color}`}>{entry.status}</span>
+                  <span className="text-[10px] text-slate-600 font-mono">
+                    {new Date(entry.timestamp).toLocaleTimeString()}
+                  </span>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
     </div>
