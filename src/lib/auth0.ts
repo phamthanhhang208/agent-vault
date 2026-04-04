@@ -9,7 +9,7 @@ export const auth0 = new Auth0Client({
   clientSecret: process.env.AUTH0_CLIENT_SECRET,
   authorizationParameters: {
     scope: 'openid profile email offline_access',
-    audience: process.env.AUTH0_AUDIENCE,
+    ...(process.env.AUTH0_AUDIENCE ? { audience: process.env.AUTH0_AUDIENCE } : {}),
   },
 });
 
