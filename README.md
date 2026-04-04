@@ -111,35 +111,6 @@ The agent discovers only the tools you've permitted. Blocked tools don't appear.
 
 ## Architecture
 
-```
-┌────────────────────────────────────────────────────┐
-│                   AgentVault                        │
-│                                                     │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────┐ │
-│  │  Dashboard    │  │  MCP Server  │  │  Audit    │ │
-│  │  (Next.js)   │  │  (HTTP)      │  │  Logger   │ │
-│  │              │  │              │  │           │ │
-│  │  - Vaults    │  │  - Routing   │  │  - Every  │ │
-│  │  - Policies  │  │  - Policy    │  │    call   │ │
-│  │  - Approvals │  │    enforce   │  │    logged │ │
-│  │  - Audit log │  │  - CIBA      │  │           │ │
-│  └──────┬───────┘  └──────┬───────┘  └─────┬─────┘ │
-│         │                 │                │       │
-│         └────────┬────────┴────────┬───────┘       │
-│                  │                 │                │
-│           ┌──────▼──────┐  ┌──────▼──────┐         │
-│           │  Vercel KV  │  │  Auth0       │         │
-│           │  (configs)  │  │  Token Vault │         │
-│           └─────────────┘  │  + CIBA      │         │
-│                            └──────┬───────┘         │
-└───────────────────────────────────┼─────────────────┘
-                                    │
-                          ┌─────────▼─────────┐
-                          │  GitHub / Gmail /  │
-                          │  Slack / Jira      │
-                          └────────────────────┘
-```
-
 ![Architecture Diagram](docs/images/architecture_light.png)
 
 ---
