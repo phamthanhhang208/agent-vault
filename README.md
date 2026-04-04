@@ -187,4 +187,10 @@ More services can be added by configuring additional Auth0 social connections â€
 
 ---
 
+## License
+
+Licensed under the [MIT License](LICENSE).
+
+---
+
 *Built solo for the Authorized to Act hackathon Â· April 2026*
