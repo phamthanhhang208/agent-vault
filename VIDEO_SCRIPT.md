@@ -129,15 +129,15 @@ claude
 **On screen:** Switch to Claude Code interactive session
 
 **Type in Claude:**
-> "List the open issues on phamthanhhang208/agent-vault-demo"
+> "Read the README of phamthanhhang208/agent-vault-demo and tell me what this project is about"
 
 **Say:**
-> "A read action. repos.read is Allow. Executes immediately — no approval."
+> "A read action. repos.read is set to Allow. Executes immediately — no approval needed."
 
-*Claude calls the tool, gets results.*
+*Claude calls the tool, reads the README, describes TodoFlow.*
 
 **Say:**
-> "Instant. The agent never held a credential."
+> "Instant. The agent read from GitHub through AgentVault. It never held a credential — Token Vault provided a fresh token, used it, and discarded it."
 
 ---
 
@@ -146,10 +146,10 @@ claude
 **On screen:** Claude Code + phone visible (split screen or phone propped up)
 
 **Type in Claude:**
-> "Create a new issue on phamthanhhang208/agent-vault-demo titled 'Add rate limiting feature' with description 'Implement per-vault rate limits to prevent API abuse'"
+> "I'm building a TodoFlow app — a todo list with pomodoro timer. Create an issue on phamthanhhang208/agent-vault-demo titled 'Add pomodoro timer component' with description 'Build a 25min work / 5min break timer with start, pause, reset controls. Show session count and daily stats.'"
 
 **Say:**
-> "Now a write action. Creating an issue requires approval in our policy. The MCP call is going to pause..."
+> "I'm asking Claude to create a feature request for my project. This is a write action — our policy requires approval. Watch the MCP call pause..."
 
 *Claude shows it's waiting / processing.*
 
@@ -166,7 +166,7 @@ claude
 **On screen:** Claude Code continues, issue created.
 
 **Say:**
-> "Approved. Issue created. Claude didn't know about Auth0, didn't handle OAuth, didn't wait for a webhook. It just called an MCP tool. AgentVault handled the rest."
+> "Approved. The issue is now on GitHub. Claude didn't know about Auth0, didn't handle OAuth. It just called an MCP tool and waited. AgentVault handled the rest."
 
 ---
 
