@@ -26,6 +26,15 @@ export interface CIBAResult {
 }
 
 /**
+ * Sanitize a binding_message for Auth0 CIBA.
+ * Auth0 only allows: alphanumerics, whitespace, and +-_.,:#
+ * Any other characters are replaced with underscores.
+ */
+function sanitizeBindingMessage(message: string): string {
+  return message.replace(/[^a-zA-Z0-9\s+\-_.,:#]/g, '_');
+}
+
+/**
  * Initiate a CIBA approval request via Auth0.
  * Sends a push notification to the user via Guardian.
  */
@@ -46,7 +55,7 @@ export async function initiateCIBA(
     client_id: clientId,
     client_secret: clientSecret,
     login_hint: JSON.stringify({ format: 'iss_sub', iss: `https://${domain}/`, sub: userId }),
-    binding_message: bindingMessage,
+    binding_message: sanitizeBindingMessage(bindingMessage),
     scope: 'openid',
     requested_expiry: String(expirySeconds),
   });
