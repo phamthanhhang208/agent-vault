@@ -81,10 +81,6 @@
 - repos.write → **Require Approval** ⏳
 - repos.delete → **Block** 🚫
 
-**On screen:** Briefly flash `docs/images/policy.png` as a visual reference
-
-![Policy Matrix](https://raw.githubusercontent.com/phamthanhhang208/agent-vault/main/docs/images/policy.png)
-
 **Say:**
 > "Step three — the policy matrix. This is where it gets interesting. Three states per action. Allow means auto-execute, shown in green. Require Approval sends a push notification to my phone via Auth0 Guardian, shown in yellow. And Block, in red — the tool doesn't just get denied. It becomes completely invisible. The agent can't even see it exists."
 
