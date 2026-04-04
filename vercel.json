@@ -3,7 +3,7 @@
   "framework": "nextjs",
   "functions": {
     "src/app/api/mcp/[serverId]/route.ts": {
-      "maxDuration": 60
+      "maxDuration": 300
     },
     "src/app/api/webhooks/ciba/route.ts": {
       "maxDuration": 10
