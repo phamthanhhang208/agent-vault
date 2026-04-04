@@ -135,19 +135,6 @@ claude
 **Say:**
 > "Here's how data flows. Read actions go straight through — policy says Allow, Token Vault provides a fresh token, API call happens, token is discarded. Write actions pause for approval via Auth0 CIBA. Let me show you both."
 
-**On screen:** Switch to Claude Code interactive session
-
-**Type in Claude:**
-> "Read the README of phamthanhhang208/agent-vault-demo and tell me what this project is about"
-
-**Say:**
-> "A read action. repos.read is set to Allow. Executes immediately — no approval needed."
-
-*Claude calls the tool, reads the README, describes TodoFlow.*
-
-**Say:**
-> "Instant. The agent read from GitHub through AgentVault. It never held a credential — Token Vault provided a fresh token, used it, and discarded it."
-
 ---
 
 ## SCENE 5 — Write Action + Dashboard Approval ⭐ [2:00 - 2:35]
