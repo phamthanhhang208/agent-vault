@@ -12,34 +12,9 @@
 
 ## OPENING — Architecture Slide [0:00 - 0:15]
 
-**On screen:** Show this diagram (create as an image or use a slide)
+**On screen:** Show `docs/images/architecture.png`
 
-```
-┌─────────────────────────────────────────────────────┐
-│                                                      │
-│   Your AI Agent                                      │
-│   (Claude Code, Cursor, OpenClaw)                   │
-│                                                      │
-│         │  MCP Protocol                              │
-│         ▼                                            │
-│   ┌─────────────────────┐                            │
-│   │   AgentVault        │                            │
-│   │   MCP Server        │──── Policy Engine          │
-│   │                     │──── Audit Logger           │
-│   └────────┬────────────┘                            │
-│            │                                         │
-│         ▼                                            │
-│   ┌─────────────────────┐                            │
-│   │   Auth0             │                            │
-│   │   Token Vault       │──── CIBA (phone approval)  │
-│   │                     │──── OAuth token management │
-│   └────────┬────────────┘                            │
-│            │                                         │
-│         ▼                                            │
-│   GitHub  ·  Gmail  ·  Slack  ·  Jira                │
-│                                                      │
-└─────────────────────────────────────────────────────┘
-```
+![Architecture](https://raw.githubusercontent.com/phamthanhhang208/agent-vault/main/docs/images/architecture.png)
 
 **Say:**
 > "AI agents can read your emails, push code, and send messages. But who controls what they're allowed to do? AgentVault solves this. You connect your services through Auth0 Token Vault, define permissions per agent, and get an MCP URL. The agent only sees what you allow. Writes need your approval. Everything is logged."
@@ -97,8 +72,12 @@
 - repos.write → **Require Approval** ⏳
 - repos.delete → **Block** 🚫
 
+**On screen:** Briefly flash `docs/images/policy.png` as a visual reference
+
+![Policy Matrix](https://raw.githubusercontent.com/phamthanhhang208/agent-vault/main/docs/images/policy.png)
+
 **Say:**
-> "Step three — the policy matrix. This is where it gets interesting. Three states per action. Allow means auto-execute. Require Approval sends a push notification to my phone via Auth0 Guardian. And Block — the tool doesn't just get denied. It becomes completely invisible. The agent can't even see it exists."
+> "Step three — the policy matrix. This is where it gets interesting. Three states per action. Allow means auto-execute, shown in green. Require Approval sends a push notification to my phone via Auth0 Guardian, shown in yellow. And Block, in red — the tool doesn't just get denied. It becomes completely invisible. The agent can't even see it exists."
 
 **Action:** Click Create → Success screen
 
@@ -138,20 +117,27 @@ claude
 
 ---
 
-## SCENE 4 — Read Action (Auto-Allowed) [1:40 - 2:00]
+## SCENE 4 — Flow Diagram + Read Action [1:40 - 2:00]
 
-**On screen:** Claude Code interactive session
+**On screen:** Briefly show `docs/images/flow.png`, then switch to Claude Code
+
+![Flow](https://raw.githubusercontent.com/phamthanhhang208/agent-vault/main/docs/images/flow.png)
+
+**Say:**
+> "Here's how data flows. Read actions go straight through — policy says Allow, Token Vault provides a fresh token, API call happens, token is discarded. Write actions pause for approval via Auth0 CIBA. Let me show you both."
+
+**On screen:** Switch to Claude Code interactive session
 
 **Type in Claude:**
 > "List the open issues on phamthanhhang208/agent-vault-demo"
 
 **Say:**
-> "A read action. repos.read is set to Allow in our policy. Watch — it executes immediately, no approval needed."
+> "A read action. repos.read is Allow. Executes immediately — no approval."
 
 *Claude calls the tool, gets results.*
 
 **Say:**
-> "Instant. The agent read from GitHub through AgentVault, which fetched a fresh token from Auth0 Token Vault, made the API call, and discarded the token. The agent never held a credential."
+> "Instant. The agent never held a credential."
 
 ---
 
