@@ -42,17 +42,19 @@ export async function initiateCIBA(
     throw new Error('Auth0 CIBA configuration missing');
   }
 
+  const body = new URLSearchParams({
+    client_id: clientId,
+    client_secret: clientSecret,
+    login_hint: JSON.stringify({ format: 'iss_sub', iss: `https://${domain}/`, sub: userId }),
+    binding_message: bindingMessage,
+    scope: 'openid',
+    requested_expiry: String(expirySeconds),
+  });
+
   const response = await fetch(`https://${domain}/bc-authorize`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      client_id: clientId,
-      client_secret: clientSecret,
-      login_hint: { format: 'iss_sub', iss: `https://${domain}/`, sub: userId },
-      binding_message: bindingMessage,
-      scope: 'openid',
-      requested_expiry: expirySeconds,
-    }),
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString(),
   });
 
   if (!response.ok) {
@@ -74,13 +76,13 @@ export async function pollCIBA(authReqId: string): Promise<CIBAResult> {
 
   const response = await fetch(`https://${domain}/oauth/token`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      client_id: clientId,
-      client_secret: clientSecret,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: clientId!,
+      client_secret: clientSecret!,
       auth_req_id: authReqId,
       grant_type: 'urn:openid:params:grant-type:ciba',
-    }),
+    }).toString(),
   });
 
   if (response.ok) {
