@@ -268,7 +268,7 @@ async function waitForApproval(
   timeoutMs = 55000
 ): Promise<'approved' | 'rejected' | 'expired'> {
   const startTime = Date.now();
-  const pollInterval = 3000; // 3 seconds
+  let pollInterval = 3000; // 3 seconds, may increase on slow_down
   const kvKey = `approval:${userId}:${requestId}`;
 
   while (Date.now() - startTime < timeoutMs) {
@@ -297,6 +297,11 @@ async function waitForApproval(
           if (cibaResult.status === 'approved') return 'approved';
           if (cibaResult.status === 'rejected') return 'rejected';
           return 'expired';
+        }
+
+        // Respect Auth0 slow_down: increase poll interval
+        if (cibaResult.backoffSeconds) {
+          pollInterval = cibaResult.backoffSeconds * 1000;
         }
       } catch (error) {
         // CIBA poll failed — log but continue polling via dashboard path

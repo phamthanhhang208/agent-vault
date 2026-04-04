@@ -23,6 +23,8 @@ export type CIBAStatus = 'pending' | 'approved' | 'rejected' | 'expired';
 export interface CIBAResult {
   status: CIBAStatus;
   auth_req_id: string;
+  /** When status is 'pending' due to slow_down, the caller should back off by this many seconds */
+  backoffSeconds?: number;
 }
 
 /**
@@ -107,7 +109,9 @@ export async function pollCIBA(authReqId: string): Promise<CIBAResult> {
   }
 
   if (error.error === 'slow_down') {
-    return { status: 'pending', auth_req_id: authReqId };
+    const retryAfter = Number(response.headers.get('retry-after')) || 10;
+    console.log('[CIBA] slow_down received, backing off', retryAfter, 'seconds');
+    return { status: 'pending', auth_req_id: authReqId, backoffSeconds: retryAfter };
   }
 
   if (error.error === 'expired_token') {
