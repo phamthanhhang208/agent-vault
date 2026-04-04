@@ -10,6 +10,8 @@
 
 AI agents are getting powerful — they can read your emails, push code, send messages. But there's no standard way to control *what* they're allowed to do. You either give them full access or no access. There's no middle ground, no audit trail, and no way to approve sensitive actions before they happen.
 
+![Before AgentVault](docs/images/before.png)
+
 ## The Solution
 
 AgentVault turns Auth0 Token Vault into a permission layer for any AI agent. Connect your services, define what each agent can do, and get an MCP server URL that enforces your rules.
@@ -25,6 +27,8 @@ GitHub / Gmail / Slack / Jira
 ```
 
 You don't change your agent. You just give it an MCP URL. AgentVault handles the rest.
+
+![Flow Diagram](docs/images/flow.png)
 
 ---
 
@@ -49,6 +53,8 @@ For every action on every service, choose:
 - **Allow** — agent acts freely
 - **Require Approval** — you approve via push notification or dashboard
 - **Block** — agent can't even see the tool
+
+![Permission Policy](docs/images/policy.png)
 
 ### ⏳ Human-in-the-Loop Approval (Auth0 CIBA)
 When an agent hits a "Require Approval" action:
@@ -133,6 +139,8 @@ The agent discovers only the tools you've permitted. Blocked tools don't appear.
                           │  Slack / Jira      │
                           └────────────────────┘
 ```
+
+![Architecture Diagram](docs/images/architecture.png)
 
 ---
 
