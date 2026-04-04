@@ -1,158 +1,236 @@
 # AgentVault — Demo Video Script (~3 min)
 
-## Setup Before Recording
-1. Open https://agent-vault-three.vercel.app — logged in
-2. Open terminal with Claude Code ready
-3. Screen recorder (QuickTime Cmd+Shift+5)
-4. Phone nearby with Auth0 Guardian app open
+## Pre-Recording Checklist
+- [ ] https://agent-vault-three.vercel.app — logged in, dashboard visible
+- [ ] Terminal ready at `~/Projects/agent-vault-demo`
+- [ ] Phone with Auth0 Guardian app open and notifications on
+- [ ] Screen recorder ready (QuickTime Cmd+Shift+5 or OBS)
+- [ ] Font size: terminal 18pt, browser zoomed to 125%
+- [ ] Close unrelated tabs/apps
 
 ---
 
-## SCENE 1 — Intro + Dashboard Tour [0:00 - 0:30]
+## OPENING — Architecture Slide [0:00 - 0:15]
 
-**On screen:** AgentVault dashboard (Overview page)
+**On screen:** Show this diagram (create as an image or use a slide)
+
+```
+┌─────────────────────────────────────────────────────┐
+│                                                      │
+│   Your AI Agent                                      │
+│   (Claude Code, Cursor, OpenClaw)                   │
+│                                                      │
+│         │  MCP Protocol                              │
+│         ▼                                            │
+│   ┌─────────────────────┐                            │
+│   │   AgentVault        │                            │
+│   │   MCP Server        │──── Policy Engine          │
+│   │                     │──── Audit Logger           │
+│   └────────┬────────────┘                            │
+│            │                                         │
+│         ▼                                            │
+│   ┌─────────────────────┐                            │
+│   │   Auth0             │                            │
+│   │   Token Vault       │──── CIBA (phone approval)  │
+│   │                     │──── OAuth token management │
+│   └────────┬────────────┘                            │
+│            │                                         │
+│         ▼                                            │
+│   GitHub  ·  Gmail  ·  Slack  ·  Jira                │
+│                                                      │
+└─────────────────────────────────────────────────────┘
+```
 
 **Say:**
-> "This is AgentVault — it gives AI agents real-world powers without giving them the keys to everything. Every service connection goes through Auth0 Token Vault. Every action is permission-controlled."
-
-**Action:** Click through sidebar:
-- **Vault Connections** → show GitHub, Google, Slack connected with green badges
-- **Agents & Policies** → show agent list
-
-**Say:**
-> "I've connected GitHub, Google, and Slack through Auth0 Token Vault. Auth0 stores and refreshes all OAuth tokens — my agents never see raw credentials."
+> "AI agents can read your emails, push code, and send messages. But who controls what they're allowed to do? AgentVault solves this. You connect your services through Auth0 Token Vault, define permissions per agent, and get an MCP URL. The agent only sees what you allow. Writes need your approval. Everything is logged."
 
 ---
 
-## SCENE 2 — Create an Agent [0:30 - 1:10]
+## SCENE 1 — Dashboard Tour [0:15 - 0:45]
 
-**On screen:** Click "Create New Agent"
-
-**Say:**
-> "Let me create an agent for Claude Code. Each agent gets its own permission vault."
-
-**Action:** Walk through the 3-step wizard:
-1. **Name:** "Claude Code Assistant" / Description: "Coding helper with GitHub access"
-2. **Services:** Check GitHub ✅, Slack ✅
-3. **Policy Matrix:**
-   - GitHub repos.read → Allow ✅
-   - GitHub repos.write → Require Approval ⏳
-   - GitHub issues.* → Allow ✅
-   - Slack chat.read → Allow ✅
-   - Slack chat.write → Require Approval ⏳
-   - Everything else → Block 🚫
+**On screen:** AgentVault dashboard — Overview page
 
 **Say:**
-> "The policy matrix is the core — Allow means auto-execute, Require Approval sends a push notification to my phone, and Block makes the tool completely invisible to the agent."
+> "Here's the AgentVault dashboard. I've connected three services through Auth0 Token Vault — GitHub, Google Workspace, and Slack."
 
-**Action:** Click Create → Success screen shows MCP URL + token
+**Action:** Click **Vault Connections** in sidebar.
+
+**On screen:** Connections page with green badges
 
 **Say:**
-> "There's my MCP URL and bearer token. Let me drop this into Claude Code."
+> "Each connection is a one-click OAuth flow. Auth0 handles token storage, encryption, and refresh. I never see raw credentials."
+
+**Action:** Click the ⚙️ on GitHub to show scopes.
+
+**Say:**
+> "I can see exactly what scopes were granted — repo access, issue management, org read. These are the maximum capabilities. But each agent gets a subset."
+
+**Action:** Close modal, click **Agents & Policies** in sidebar.
 
 ---
 
-## SCENE 3 — Connect to Claude Code [1:10 - 1:30]
+## SCENE 2 — Create an Agent [0:45 - 1:20]
 
-**On screen:** Terminal
+**On screen:** Agents page
 
-**Action:** Create a project with the MCP config:
+**Say:**
+> "This is the key concept — vaults. Each agent gets its own permission profile. My personal assistant might get full access. A work bot gets read-only. A public agent gets nothing sensitive."
+
+**Action:** Click **"Create New Agent"**
+
+**Step 1 — Identity:**
+- Name: `Claude Code Assistant`
+- Description: `Coding helper with scoped GitHub access`
+
+**Say:**
+> "Step one — name the agent."
+
+**Step 2 — Services:**
+- Check ✅ GitHub
+
+**Say:**
+> "Step two — pick which services this agent can access."
+
+**Step 3 — Policy Matrix:**
+- repos.read → **Allow** ✅
+- issues.* → **Allow** ✅  
+- repos.write → **Require Approval** ⏳
+- repos.delete → **Block** 🚫
+
+**Say:**
+> "Step three — the policy matrix. This is where it gets interesting. Three states per action. Allow means auto-execute. Require Approval sends a push notification to my phone via Auth0 Guardian. And Block — the tool doesn't just get denied. It becomes completely invisible. The agent can't even see it exists."
+
+**Action:** Click Create → Success screen
+
+**Say:**
+> "There's my MCP URL and bearer token. One URL, one token. That's all any agent needs."
+
+**Action:** Copy the MCP URL.
+
+---
+
+## SCENE 3 — Connect to Claude Code [1:20 - 1:40]
+
+**Action:** Cmd+Tab to terminal.
+
+**On screen:** Terminal at `~/Projects/agent-vault-demo`
+
+**Say:**
+> "I've already set up a demo project with the MCP config. Let me show you."
+
+**Type:**
 ```bash
-mkdir demo-project && cd demo-project
-cat > .mcp.json << 'EOF'
-{
-  "mcpServers": {
-    "agentvault": {
-      "type": "http",
-      "url": "https://agent-vault-three.vercel.app/api/mcp/srv_XXXXX",
-      "headers": {
-        "Authorization": "Bearer avt_XXXXX"
-      }
-    }
-  }
-}
-EOF
+cat .mcp.json
+```
+
+**Say:**
+> "One JSON file with the AgentVault MCP URL and bearer token. That's the entire setup. No SDK, no auth code, no token management."
+
+**Type:**
+```bash
 claude
 ```
 
 **Say:**
-> "One JSON file. That's all Claude Code needs. The MCP URL points to my AgentVault server — Claude will discover only the tools I've allowed."
+> "Let's start Claude Code. It auto-discovers the AgentVault MCP server."
+
+*Wait for Claude to start and show the MCP tools.*
 
 ---
 
-## SCENE 4 — Read Tool (Auto-Allowed) [1:30 - 1:50]
+## SCENE 4 — Read Action (Auto-Allowed) [1:40 - 2:00]
 
-**On screen:** Claude Code running
+**On screen:** Claude Code interactive session
 
-**Type in Claude Code:**
-> "List the open issues on phamthanhhang208/agent-vault"
+**Type in Claude:**
+> "List the open issues on phamthanhhang208/agent-vault-demo"
 
 **Say:**
-> "This is a read action — repos.read is set to Allow, so it executes immediately. No approval needed."
+> "A read action. repos.read is set to Allow in our policy. Watch — it executes immediately, no approval needed."
 
-**Action:** Claude Code calls the tool, gets results.
+*Claude calls the tool, gets results.*
+
+**Say:**
+> "Instant. The agent read from GitHub through AgentVault, which fetched a fresh token from Auth0 Token Vault, made the API call, and discarded the token. The agent never held a credential."
 
 ---
 
-## SCENE 5 — Write Tool + Phone Approval ⭐ [1:50 - 2:30]
+## SCENE 5 — Write Action + Phone Approval ⭐ [2:00 - 2:35]
 
-**On screen:** Claude Code + phone visible
+**On screen:** Claude Code + phone visible (split screen or phone propped up)
 
-**Type in Claude Code:**
-> "Create a new issue on phamthanhhang208/agent-vault titled 'Add rate limiting' with description 'Implement per-vault rate limits'"
-
-**Say:**
-> "Now watch — creating an issue requires approval. The MCP call is going to pause..."
-
-**Action:** Claude Code shows it's waiting. Your phone buzzes with Guardian push notification.
+**Type in Claude:**
+> "Create a new issue on phamthanhhang208/agent-vault-demo titled 'Add rate limiting feature' with description 'Implement per-vault rate limits to prevent API abuse'"
 
 **Say:**
-> "There's the push notification from Auth0 Guardian. It tells me exactly what the agent wants to do. I'll approve it."
+> "Now a write action. Creating an issue requires approval in our policy. The MCP call is going to pause..."
 
-**Action:** Tap Approve on phone. Claude Code continues and creates the issue.
+*Claude shows it's waiting / processing.*
 
 **Say:**
-> "Approved. Issue created. The agent didn't need to know about Auth0 or OAuth — it just called an MCP tool and waited."
+> "And there's my phone."
+
+**On screen:** Phone shows Auth0 Guardian push notification
+
+**Say (reading the notification):**
+> "AgentVault: Claude Code Assistant wants to create an issue on GitHub. Approve or deny."
+
+**Action:** Tap **Approve** on phone.
+
+**On screen:** Claude Code continues, issue created.
+
+**Say:**
+> "Approved. Issue created. Claude didn't know about Auth0, didn't handle OAuth, didn't wait for a webhook. It just called an MCP tool. AgentVault handled the rest."
 
 ---
 
-## SCENE 6 — Audit Log [2:30 - 2:45]
+## SCENE 6 — Audit Log [2:35 - 2:50]
 
-**On screen:** Switch to AgentVault dashboard → Audit Logs
+**Action:** Cmd+Tab to browser → AgentVault dashboard → **Audit Logs**
+
+**On screen:** Audit log table with entries
 
 **Say:**
-> "Every tool call is logged — timestamp, agent, action, risk level, and how it was resolved. Auto-executed reads, phone-approved writes, and any blocked attempts."
-
-**Action:** Scroll through the audit log showing the calls we just made.
+> "Every tool call is here. Timestamp, agent name, service, action, risk level, and how it was resolved. The read was auto-executed. The write was approved via Guardian push. If the agent had tried to delete a repo — it couldn't. That tool doesn't exist in its MCP."
 
 ---
 
-## SCENE 7 — Close [2:45 - 3:00]
+## SCENE 7 — Close [2:50 - 3:00]
 
 **On screen:** Dashboard overview with stats
 
 **Say:**
-> "That's AgentVault. Connect your services through Auth0 Token Vault. Define permissions per agent. Get an MCP URL. Drop it into any agent. Every action logged, every write approved, every token safe inside Auth0's vault."
+> "That's AgentVault. Auth0 Token Vault handles the identity. MCP handles the protocol. We handle the permissions in between. Connect once. Control everything. Plug into any agent."
+
+*Fade out.*
 
 ---
 
-## Cheat Sheet — Lines to Say
+## All Lines (teleprompter cheat sheet)
 
-1. "AgentVault gives AI agents real-world powers without giving them the keys to everything."
-2. "Auth0 Token Vault stores and refreshes all OAuth tokens — agents never see raw credentials."
-3. "The policy matrix: Allow auto-executes, Approval sends a push to my phone, Block makes the tool invisible."
-4. "One JSON file. That's all Claude Code needs."
-5. "Read action — repos.read is Allow, executes immediately."
-6. "Creating an issue requires approval. The MCP call pauses..."
-7. "There's the Guardian push. I'll approve it."
-8. "The agent just called an MCP tool and waited. It doesn't know about Auth0."
-9. "Every tool call logged. Auto-executed, approved, blocked."
-10. "Connect once, control everything, plug into any agent."
+1. "AI agents can read your emails, push code, send messages. But who controls what they're allowed to do?"
+2. "AgentVault solves this. Connect services through Auth0 Token Vault, define permissions, get an MCP URL."
+3. "Each connection is a one-click OAuth flow. Auth0 handles token storage, encryption, and refresh."
+4. "I can see exactly what scopes were granted. These are the maximum capabilities. Each agent gets a subset."
+5. "This is the key concept — vaults. Each agent gets its own permission profile."
+6. "Three states per action. Allow auto-executes. Approval sends a push to my phone. Block makes the tool invisible."
+7. "One JSON file. No SDK, no auth code, no token management."
+8. "A read action — Allow in our policy. Executes immediately."
+9. "The agent never held a credential."
+10. "A write action. Creating an issue requires approval. The MCP call pauses..."
+11. "There's my phone. Approve."
+12. "Claude didn't know about Auth0. It just called an MCP tool. AgentVault handled the rest."
+13. "Every tool call is logged. Auto-executed, approved, blocked."
+14. "Connect once. Control everything. Plug into any agent."
 
 ---
 
 ## If Things Go Wrong
-- **MCP timeout:** Claude Code has a default timeout. If approval takes too long, the call fails. Approve quickly!
-- **Guardian push not arriving:** Approve via the dashboard Action Queue instead.
-- **CIBA not working:** Dashboard approval still works — same result, just less dramatic for the video.
-- **Token Vault not configured:** Tools return mock data. Still demonstrates the permission flow.
+
+| Problem | Fix |
+|---------|-----|
+| MCP timeout on write | Approve faster! Or pre-approve via dashboard |
+| Guardian push not arriving | Approve via dashboard Action Queue instead |
+| Claude can't find MCP server | Check `.mcp.json` URL is correct |
+| "Unauthorized" from MCP | Bearer token expired or wrong — recreate agent |
+| Tool returns mock data | Token Vault not connected — OK for demo, still shows flow |
