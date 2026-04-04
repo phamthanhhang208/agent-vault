@@ -53,7 +53,7 @@ const SERVICES: ServiceConfig[] = [
   },
 ];
 
-export default function ConnectionsPage() {
+function ConnectionsPageInner() {
   const searchParams = useSearchParams();
   const [connections, setConnections] = useState<VaultConnection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -379,5 +379,16 @@ export default function ConnectionsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+
+import { Suspense } from 'react';
+
+export default function ConnectionsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-slate-500">Loading...</div>}>
+      <ConnectionsPageInner />
+    </Suspense>
   );
 }
